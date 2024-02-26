@@ -1,0 +1,60 @@
+{
+    "manifest_version": 3,
+    "name": "Odoo dev tools",
+    "description": "Odoo dev tools",
+    "version": "1.0",
+    "action": {
+        "default_popup": "/popup/index.html",
+        "default_icon": "/images/odoo_dev.png"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "icons": {
+        "16": "/images/odoo_dev.png",
+        "32": "/images/odoo_dev.png",
+        "48": "/images/odoo_dev.png",
+        "128": "/images/odoo_dev.png"
+    },
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "tabs",
+        "notifications",
+        "storage"
+    ],
+    "host_permissions": [
+        "https://*/*",
+        "http://*/*"
+    ],
+    "content_scripts": [
+        {
+            "run_at": "document_end",
+            "js": [
+                "scripts/content.js"
+            ],
+            "world": "ISOLATED",
+            "all_frames": true,
+            "matches": [
+                "https://developer.chrome.com/docs/extensions/*",
+                "https://developer.chrome.com/docs/webstore/*",
+                "http://localhost/*",
+                "https://localhost/*",
+                "http://localhost:8015/*",
+                "http://*/*",
+                "https://*/*"
+            ]
+        }
+    ]
+    // "web_accessible_resources": [
+    //     {
+    //         "resources": [
+    //             "injected/odoo.html"
+    //         ],
+    //         "matches": [
+    //             "http://*/*",
+    //             "https://*/*"
+    //         ]
+    //     }
+    // ]
+}
