@@ -24,24 +24,30 @@ function callOdooRpc(model, method, args, kwargs) {
 
 // Función principal que inicia la aplicación
 function main() {
-    const container = createContainer();
+    const container = getContainer();
     checkActionManagerExists(container);
 }
 
 // Crea un contenedor y aplica estilos
-function createContainer() {
-    const container = document.createElement('div');
-    // Agrega estilos al contenedor
-    container.style.position = 'relative';
-    container.style.right = '0';
-    container.style.top = '0';
-    container.style.height = '100%';
-    container.style.overflowY = 'scroll';
-    container.style.border = '1px solid #e3e3e3';
-    container.style.backgroundColor = '#f0f0f0';
+function getContainer() {
+    // Verifica si el contenedor ya existe
+    let container = document.querySelector('#odoo-dev');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'odoo-dev'; // Asegúrate de asignar un ID único al contenedor
+        // Agrega estilos al contenedor
+        container.style.position = 'relative';
+        container.style.right = '0';
+        container.style.top = '0';
+        container.style.height = '100%';
+        container.style.overflowY = 'scroll';
+        container.style.border = '1px solid #e3e3e3';
+        container.style.backgroundColor = '#f0f0f0';
+    } else {
+        container.innerHTML = '';
+    }
     return container;
 }
-
 
 // Comprueba si el elemento .o_action_manager existe y si es así, agrega el contenedor
 function checkActionManagerExists(container) {
@@ -52,6 +58,8 @@ function checkActionManagerExists(container) {
             // Verifica si actionManager tiene un hijo antes de proceder
             var child = actionManager.children().first();
             if (actionManager.length && child.length) {
+                // Verifica si el contenedor ya existe antes de agregarlo
+
                 // Inserta el contenedor y ajusta su tamaño
                 actionManager.append(container);
                 $(container).css({
@@ -74,8 +82,10 @@ function checkActionManagerExists(container) {
                     'width': '50px',
                     'borderRadius': '50%'
                 });
+                if ($("#odoo-dev-toggle-button").length != 0) {
+                    $("#odoo-dev-toggle-button").remove();
+                }
                 toggleButton.html('<img src="https://play-lh.googleusercontent.com/Zv2I5VIii0ZK9sJ2FgPFZxynVqtcenDZkO9BUYMO-35sTExs21OsGXEj2kQQFkk2ww" style="width: 100%;"></img>');
-
                 $('body').append(toggleButton);
                 toggleButton.click(function () {
                     var isHidden = $(container).css('display') === 'none';
@@ -91,9 +101,11 @@ function checkActionManagerExists(container) {
                             'width': '100%',
                             'borderRadius': '0'
                         });
+                        toggleButton.attr('id', 'odoo-dev-toggle-button');
                         // Cambia el texto del botón a "Cerrar Dev Tools"
                         toggleButton.text('Cerrar Dev Tools');
                     } else {
+                        $(container).prepend(toggleButton);
                         // Mueve el botón fuera del contenedor cuando este está oculto
                         $('body').append(toggleButton);
                         toggleButton.css({
@@ -110,6 +122,7 @@ function checkActionManagerExists(container) {
                         toggleButton.html('<img src="https://play-lh.googleusercontent.com/Zv2I5VIii0ZK9sJ2FgPFZxynVqtcenDZkO9BUYMO-35sTExs21OsGXEj2kQQFkk2ww" style="width: 100%;"></img>');
                         // Cambia el texto del botón a "Open Dev Tools"
                         // toggleButton.text('Open Dev Tools');
+
 
                         $(child).css({
                             'width': '100%',
@@ -218,13 +231,43 @@ function fetchAndDrawFields(container) {
     const { model, res_id, view_type } = getUrlData();
     console.log(action);
     callOdooRpc(model, 'fields_get', [], {})
-        .then(function (fields) {
-            return callOdooRpc(model, 'search_read', [[['id', '=', res_id]]], {})
+        .then(function (allFields) {
+            let fieldChecksPromises = [];
+            Object.entries(allFields).forEach(([fieldName, fieldProps]) => {
+                if (fieldProps.type === 'many2one' || fieldProps.type === 'one2many' || fieldProps.type === 'many2many') {
+                    // Si el campo es many2one, verifica si el usuario tiene permisos para leerlo
+                    fieldChecksPromises.push(
+                        callOdooRpc(fieldProps.relation, 'check_access_rights', ['read', false], {})
+                            .then(
+                                hasAccess => {
+                                    return hasAccess ? fieldName : null;
+                                }
+                            )
+                            .catch(
+                                error => {
+                                    console.error("Error al verificar permisos de lectura: ", error);
+                                    return null;
+                                }
+                            )
+                    );
+                } else {
+                    // Si el campo no es many2one, asume que el usuario tiene permisos para leerlo
+                    fieldChecksPromises.push(Promise.resolve(fieldName));
+                }
+            });
+
+            Promise.all(fieldChecksPromises)
+                .then(fieldChecks => {
+                    // Remove null values from fieldChecks
+                    fieldChecks = fieldChecks.filter(fieldName => fieldName !== null);
+
+                    return callOdooRpc(model, 'search_read', [[['id', '=', res_id]]], { 'fields': fieldChecks });
+                })
                 .then(function (records) {
-                    const fieldsAndValues = records[0];
-                    drawFields(container, fieldsAndValues, fields);
+                    fieldsAndValues = records[0];
+                    drawFields(container, fieldsAndValues, allFields);
                 });
-        });
+        })
 }
 
 function drawFields(container, fieldsAndValues, fields) {
