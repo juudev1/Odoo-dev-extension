@@ -162,8 +162,8 @@ function drawMenu(container) {
     fieldsOption.addEventListener('click', handleFieldsOptionClick.bind(null, content));
     menu.append(fieldsOption);
 
-    const filtersOption = createMenuOption('Filters');
-    filtersOption.addEventListener('click', handleFiltersOptionClick);
+    const filtersOption = createMenuOption('Obtener base de datos');
+    filtersOption.addEventListener('click', handleFiltersOptionClick.bind(null, content));
     menu.append(filtersOption);
 
     container.append(menu);
@@ -218,10 +218,10 @@ function handleFieldsOptionClick(container) {
     fetchAndDrawFields(container);
 }
 
-function handleFiltersOptionClick() {
-    console.log('Filters');
-    callOdooRpc('res.partner', 'read', [[1]], { fields: ['name', 'country_id', 'comment'] })
-        .then(data => console.log(data));
+function handleFiltersOptionClick(container) {
+    const div = document.createElement('div');
+    div.textContent = odoo.info.db;
+    container.appendChild(div);
 }
 
 function fetchAndDrawFields(container) {
@@ -287,13 +287,23 @@ function drawFields(container, fieldsAndValues, fields) {
         div.style.backgroundColor = '#ffffff';
         div.style.display = 'flex';
         div.style.flexDirection = 'column';
+        div.style.wordBreak = 'break-all';
 
+        // Nombre del campo
+        let strong = document.createElement('strong');
+        // Contenido del campo
+        let p = document.createElement('p');
+        p.style.marginBottom = '0';
         // Crea un nuevo span para el tipo de campo
         let span = document.createElement('span');
         span.style.color = 'red';
 
         span.textContent = fields[key].type;
-        div.textContent = `${key}: ${value}`;
+        strong.textContent = key;
+        p.textContent = value;
+
+        div.appendChild(strong);
+        div.appendChild(p);
         div.appendChild(span);
 
         // Agrega el div al elemento padre

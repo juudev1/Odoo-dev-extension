@@ -3,8 +3,7 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
         chrome.scripting.executeScript({
             target: { tabId: tabId },
             files: [
-                // 'injected/tailwind.js',
-                'injected/odoo.js'
+                '../build/main.js',
             ],
             world: chrome.scripting.ExecutionWorld.MAIN,
         }).then(function () {

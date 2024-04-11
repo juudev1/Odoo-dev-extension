@@ -4,17 +4,17 @@
     "description": "Odoo dev tools",
     "version": "1.0",
     "action": {
-        "default_popup": "/popup/index.html",
-        "default_icon": "/images/odoo_dev.png"
+        "default_popup": "/static/index.html",
+        "default_icon": "/assets/images/odoo_dev.png"
     },
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "src/background.js"
     },
     "icons": {
-        "16": "/images/odoo_dev.png",
-        "32": "/images/odoo_dev.png",
-        "48": "/images/odoo_dev.png",
-        "128": "/images/odoo_dev.png"
+        "16": "/assets/images/odoo_dev.png",
+        "32": "/assets/images/odoo_dev.png",
+        "48": "/assets/images/odoo_dev.png",
+        "128": "/assets/images/odoo_dev.png"
     },
     "permissions": [
         "activeTab",
@@ -31,30 +31,35 @@
         {
             "run_at": "document_end",
             "js": [
-                "scripts/content.js"
+                "/src/contentScript/contentScriptMain.js"
+            ],
+            "world": "MAIN",
+            "all_frames": true,
+            "matches": [
+                "<all_urls>"
+            ]
+        },
+        {
+            "run_at": "document_end",
+            "js": [
+                "/src/contentScript/contentScriptIsolated.js"
             ],
             "world": "ISOLATED",
             "all_frames": true,
             "matches": [
-                "https://developer.chrome.com/docs/extensions/*",
-                "https://developer.chrome.com/docs/webstore/*",
-                "http://localhost/*",
-                "https://localhost/*",
-                "http://localhost:8015/*",
+                "<all_urls>"
+            ]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "build/main.js"
+            ],
+            "matches": [
                 "http://*/*",
                 "https://*/*"
             ]
         }
     ]
-    // "web_accessible_resources": [
-    //     {
-    //         "resources": [
-    //             "injected/odoo.html"
-    //         ],
-    //         "matches": [
-    //             "http://*/*",
-    //             "https://*/*"
-    //         ]
-    //     }
-    // ]
 }
