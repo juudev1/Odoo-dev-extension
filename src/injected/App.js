@@ -1,73 +1,106 @@
-import { useState, useEffect } from 'react';
-
+import { useState, useEffect, useRef } from 'react';
 import Drawer from '../components/drawer';
 import Spinner from '../components/Spinner';
 import RecordValues from '../components/RecordValues';
 
 import Layout from '../Layouts/Layout';
+import useOdooRpc from '../hooks/useOdooRpc';
 
 const App = () => {
-
-  const [isLoading, setIsLoading] = useState(true);
+  const { callOdooRpc, getUrlData, getCurrentAction } = useOdooRpc();
+  const [isLoading, setIsLoading] = useState(false);
   const [showRecordValues, setShowRecordValues] = useState(false);
   const [recordValues, setRecordValues] = useState([]);
+  const [url, setUrl] = useState(window.location.href);
+  const [fieldClicked, setFieldClicked] = useState(null);
+  const popupRef = useRef(null);
 
   useEffect(() => {
-    setIsLoading(false);
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          setUrl(window.location.href);
+        }
+      });
+    });
 
-  }, []);
+    observer.observe(document, {
+      childList: true,
+      subtree: true,
+    });
 
+    return () => {
+      observer.disconnect();
+    };
+  }, [url]);  // Dependencia en la URL para que se ejecute cada vez que cambia la URL
 
-  // Función para hacer llamadas RPC a Odoo
-  function callOdooRpc(model, method, args, kwargs) {
-    const url = '/web/dataset/call_kw/' + model + '/' + method;
-    const payload = {
-      method: 'call',
-      params: {
-        model: model,
-        method: method,
-        args: args,
-        kwargs: kwargs,
-      },
+  useEffect(() => {
+    const { model, res_id, view_type } = getUrlData();
+
+    if (showRecordValues && view_type == 'form') {
+      setIsLoading(true);
+      setShowRecordValues(false);
+
+      getRecordValues().finally(() => {
+        setIsLoading(false);
+        setShowRecordValues(true);
+      });
+    }
+
+  }, [url]);  // Dependencia en la URL para que se ejecute cada vez que cambia la URL
+
+  useEffect(() => {
+    const handleRightClick = (event) => {
+      event.preventDefault(); // Evita el menú contextual predeterminado
+      console.log(event.target); // Imprime el elemento en el que se hizo clic con el botón derecho
+      var $element = event.target;
+      var field;
+
+      if ($element.getAttribute('name')) {
+        field = $element.getAttribute('name');
+      } else if ($element.getAttribute('data-name')) {
+        field = $element.getAttribute('data-name');
+      }
+      // Busca al padre div que tenga name, maximo 10 padres hacia arriba
+      if (!field) {
+        for (let i = 0; i < 10; i++) {
+          $element = $element.parentElement;
+          if (!$element) break;
+          if ($element.getAttribute('name')) {
+            field = $element.getAttribute('name');
+            break;
+          } else if ($element.getAttribute('data-name')) {
+            field = $element.getAttribute('data-name');
+            break;
+          }
+        }
+      }
+      if (field) {
+        setFieldClicked({
+          x: event.clientX,
+          y: event.clientY,
+          field: field
+        });
+      }
+    };
+    const handleLeftClick = () => {
+      if (popupRef.current && !popupRef.current.contains(event.target)) {
+        setFieldClicked(null);
+      }
     };
 
-    return fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-      .then(response => response.json())
-      .then(data => data.result);
-  }
+    document.addEventListener('contextmenu', handleRightClick);
+    document.addEventListener('click', handleLeftClick);
 
-  function getUrlData() {
-    // Obtén la URL actual
-    var url = new URL(window.location.href);
-
-    // Obtén el fragmento de la URL después del '#'
-    var hash = url.hash;
-
-    // Crea un objeto URLSearchParams con el fragmento
-    var params = new URLSearchParams(hash.substring(1));
-
-    // Ahora puedes obtener el modelo y el res_id
-    var model = params.get('model');
-    var res_id = params.get('id');
-    var view_type = params.get('view_type');
-
-    return { model, res_id, view_type };
-  }
-
-  function getCurrentAction() {
-    const current_action = JSON.parse(window.sessionStorage.getItem('current_action'));
-    return current_action;
-  }
+    return () => {
+      // Limpia el event listener cuando el componente se desmonta
+      document.removeEventListener('contextmenu', handleRightClick);
+      document.removeEventListener('click', handleLeftClick);
+    };
+  }, []); // Dependencias vacías para que se ejecute solo en el montaje y desmontaje
 
   async function fetchAndDrawFields() {
     let fieldsAndValues = {};
-    const action = getCurrentAction();
     const { model, res_id, view_type } = getUrlData();
 
     if (!model || !res_id) return null;
@@ -129,7 +162,7 @@ const App = () => {
 
   const getRecordValues = async () => {
     setIsLoading(true);
-    setShowRecordValues(true);
+    setShowRecordValues(false);
 
     // Obtener valores
     const values = await fetchAndDrawFields();
@@ -139,8 +172,8 @@ const App = () => {
       setIsLoading(false);
       setRecordValues([]);
     }
-
     setRecordValues(values);
+    setShowRecordValues(true);
     setIsLoading(false);
   }
 
@@ -165,8 +198,25 @@ const App = () => {
         )}
 
         {showRecordValues && <RecordValues values={recordValues} />}
-
       </Layout>
+
+      {fieldClicked && (
+        <div
+          ref={popupRef}
+          style={{
+            position: 'absolute',
+            top: fieldClicked.y,
+            left: fieldClicked.x,
+            zIndex: 10002,
+            backgroundColor: 'white',
+            padding: '1em',
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+          }}
+        >
+          <p>Field name: {fieldClicked.field}</p>
+        </div>
+      )}
     </>
   );
 }

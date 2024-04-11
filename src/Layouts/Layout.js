@@ -16,7 +16,7 @@ const Layout = ({ children }) => {
 
     return (
         <div>
-            <button onClick={handleToggleDrawer} className="absolute top-50 right-0 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2.5 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800" type="button" data-drawer-target="drawer-example" data-drawer-show="drawer-example" aria-controls="drawer-example">
+            <button onClick={handleToggleDrawer} id="odoo-dev-btn" type="button" data-drawer-target="drawer-example" data-drawer-show="drawer-example" aria-controls="drawer-example">
                 Odoo Dev
             </button>
 
