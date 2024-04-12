@@ -8,6 +8,8 @@ import useOdooRpc from '../hooks/useOdooRpc';
 
 const App = () => {
   const { callOdooRpc, getUrlData, callOdooRpcButton, getCurrentAction } = useOdooRpc();
+  const [record, setRecord] = useState(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [showRecordValues, setShowRecordValues] = useState(false);
   const [recordValues, setRecordValues] = useState([]);
@@ -15,6 +17,10 @@ const App = () => {
   const [fieldClicked, setFieldClicked] = useState(null);
   const [moduleClicked, setModuleClicked] = useState(null);
   const [isUpdatingModule, setIsUpdatingModule] = useState(false);
+  const [reports, setReports] = useState({
+    isActive: false,
+    reports: []
+  });
 
   const popupRef = useRef(null);
   const modulePopupRef = useRef(null);
@@ -24,6 +30,12 @@ const App = () => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'childList') {
           setUrl(window.location.href);
+          const { model, res_id, view_type } = getUrlData();
+          setRecord({
+            res_id: res_id,
+            model: model,
+            view_type: view_type
+          })
         }
       });
     });
@@ -54,6 +66,13 @@ const App = () => {
   }, [url]);  // Dependencia en la URL para que se ejecute cada vez que cambia la URL
 
   useEffect(() => {
+    const { model, res_id, view_type } = getUrlData();
+    setRecord({
+      res_id: res_id,
+      model: model,
+      view_type: view_type
+    })
+
     const handleRightClick = (event) => {
       event.preventDefault(); // Evita el menú contextual predeterminado
       console.log(event.target); // Imprime el elemento en el que se hizo clic con el botón derecho
@@ -228,6 +247,41 @@ const App = () => {
 
   }
 
+  const getReports = async () => {
+    const { model, res_id, view_type } = getUrlData();
+
+    if (!model || !res_id) return null;
+    if (view_type !== 'form') return null;
+
+    callOdooRpc(model, 'load_views', [], {
+      options: {
+        action_id: getCurrentAction().id,
+        toolbar: true,
+        load_filters: true,
+      },
+      views: [[false, "kanban"], [false, "list"], [false, "pivot"], [false, "form"]],
+    }).then(async function (result) {
+      const field_views = result.fields_views;
+      const reports_actions = field_views[view_type].toolbar.print;
+      if (reports_actions) {
+        const reportPromises = reports_actions.map(report_action => {
+          const id = report_action.id;
+          return callOdooRpc('ir.actions.report', 'search_read', [[['id', '=', id]]], { 'fields': ['name', 'report_name'] }).then(result => result[0]);
+        });
+
+        const report_list = await Promise.all(reportPromises);
+        console.log(report_list);
+
+        setReports({
+          isActive: true,
+          reports: report_list
+        });
+      }
+    }).catch(function (error) {
+      console.error(error);
+    });
+  }
+
   return (
     <>
       <Layout>
@@ -239,13 +293,25 @@ const App = () => {
             <a onClick={getRecordValues} href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
               Obtener valores del registro
             </a>
-            <a href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
-              Option 3
+            <a onClick={getReports} href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
+              Visualizar reportes
             </a>
           </div>
         )}
 
         {showRecordValues && <RecordValues values={recordValues} />}
+
+        {reports.isActive && (
+          <div className='flex flex-col gap-2'>
+            <h5 class="mt-2 mb-2 text-lg font-semibold tracking-tight text-sky-700">Reports</h5>
+            {reports.reports.map(value => (
+              <a target='_blank' href={`${window.location.origin}/report/pdf/${value.report_name}/${record.res_id}`} class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
+                {value.name}
+              </a>
+            ))
+            }
+          </div>
+        )}
       </Layout>
 
       {fieldClicked && (
