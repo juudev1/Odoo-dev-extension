@@ -7,13 +7,17 @@ import Layout from '../Layouts/Layout';
 import useOdooRpc from '../hooks/useOdooRpc';
 
 const App = () => {
-  const { callOdooRpc, getUrlData, getCurrentAction } = useOdooRpc();
+  const { callOdooRpc, getUrlData, callOdooRpcButton, getCurrentAction } = useOdooRpc();
   const [isLoading, setIsLoading] = useState(false);
   const [showRecordValues, setShowRecordValues] = useState(false);
   const [recordValues, setRecordValues] = useState([]);
   const [url, setUrl] = useState(window.location.href);
   const [fieldClicked, setFieldClicked] = useState(null);
+  const [moduleClicked, setModuleClicked] = useState(null);
+  const [isUpdatingModule, setIsUpdatingModule] = useState(false);
+
   const popupRef = useRef(null);
+  const modulePopupRef = useRef(null);
 
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
@@ -53,6 +57,7 @@ const App = () => {
     const handleRightClick = (event) => {
       event.preventDefault(); // Evita el menú contextual predeterminado
       console.log(event.target); // Imprime el elemento en el que se hizo clic con el botón derecho
+
       var $element = event.target;
       var field;
 
@@ -61,6 +66,20 @@ const App = () => {
       } else if ($element.getAttribute('data-name')) {
         field = $element.getAttribute('data-name');
       }
+
+      // Si es un elemento del menu permitir actualizar
+      if ($element.parentElement && $element.parentElement.getAttribute('data-menu-xmlid')) {
+        const menuItem = $element.parentElement.getAttribute('data-menu-xmlid');
+        const module = menuItem.split('.')[0];
+
+        setModuleClicked({
+          x: event.clientX,
+          y: event.clientY,
+          module: module
+        });
+        return;
+      }
+
       // Busca al padre div que tenga name, maximo 10 padres hacia arriba
       if (!field) {
         for (let i = 0; i < 10; i++) {
@@ -86,6 +105,9 @@ const App = () => {
     const handleLeftClick = () => {
       if (popupRef.current && !popupRef.current.contains(event.target)) {
         setFieldClicked(null);
+      }
+      if (modulePopupRef.current && !modulePopupRef.current.contains(event.target)) {
+        setModuleClicked(null);
       }
     };
 
@@ -177,6 +199,35 @@ const App = () => {
     setIsLoading(false);
   }
 
+  const handleUpdateModule = async () => {
+    setIsUpdatingModule(true);
+    console.log('Actualizar módulo');
+    // Buscar en ir.module.module
+    // Si existe el modulo, actualizarlo
+
+    callOdooRpc(
+      'ir.module.module',
+      'search_read',
+      [[['name', '=', moduleClicked.module]]],
+      { 'fields': ['id'] })
+      .then(function (module) {
+        console.log(module);
+        const id = module[0]?.id;
+        callOdooRpcButton(
+          'ir.module.module',
+          'button_immediate_upgrade',
+          [[id]],
+          {}).then(function (result) {
+            console.log(result);
+            window.location.reload();
+          }).finally(() => {
+            setIsUpdatingModule(false);
+            setModuleClicked(null);
+          });
+      })
+
+  }
+
   return (
     <>
       <Layout>
@@ -187,9 +238,6 @@ const App = () => {
           <div class="flex flex-col gap-2">
             <a onClick={getRecordValues} href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
               Obtener valores del registro
-            </a>
-            <a href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
-              Option 2
             </a>
             <a href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
               Option 3
@@ -215,6 +263,29 @@ const App = () => {
           }}
         >
           <p>Field name: {fieldClicked.field}</p>
+        </div>
+      )}
+
+      {moduleClicked && (
+        <div ref={modulePopupRef} style={{
+          position: 'absolute',
+          top: moduleClicked.y,
+          left: moduleClicked.x,
+          zIndex: 10002,
+          backgroundColor: 'white',
+          padding: '1em',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+        }}
+          className="flex flex-col gap-2"
+        >
+          <p>Module name: {moduleClicked.module}</p>
+          <a onClick={handleUpdateModule} href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
+            Actualizar Módulo
+          </a>
+          {
+            isUpdatingModule && <Spinner />
+          }
         </div>
       )}
     </>

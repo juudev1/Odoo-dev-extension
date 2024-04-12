@@ -30,6 +30,32 @@ export default function useOdooRpc() {
             });
     }
 
+    function callOdooRpcButton(model, method, args, kwargs) {
+        const url = '/web/dataset/call_button';
+        const payload = {
+            method: 'call',
+            params: {
+                model: model,
+                method: method,
+                args: args,
+                kwargs: kwargs,
+            },
+        };
+
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        })
+            .then(response => response.json())
+            .then(data => {
+                setData(data.result);
+                return data.result;
+            });
+    }
+
     function getUrlData() {
         // Obtén la URL actual
         var url = new URL(window.location.href);
@@ -53,5 +79,5 @@ export default function useOdooRpc() {
         return current_action;
     }
 
-    return { data, callOdooRpc, getUrlData, getCurrentAction };
+    return { data, callOdooRpc, callOdooRpcButton, getUrlData, getCurrentAction };
 }
