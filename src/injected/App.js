@@ -249,37 +249,75 @@ const App = () => {
 
   const getReports = async () => {
     const { model, res_id, view_type } = getUrlData();
+    const version = window.odoo.info.server_version_info[0];
 
     if (!model || !res_id) return null;
     if (view_type !== 'form') return null;
+    if (version == 16 || version == 15 || version == 14) {
+      callOdooRpc(model, 'load_views', [], {
+        options: {
+          action_id: getCurrentAction().id,
+          toolbar: true,
+          load_filters: true,
+        },
+        views: [[false, "kanban"], [false, "list"], [false, "pivot"], [false, "form"]],
+      }).then(async function (result) {
+        const field_views = result.fields_views;
+        console.log(field_views);
+        const reports_actions = field_views[view_type].toolbar.print;
+        if (reports_actions) {
+          const reportPromises = reports_actions.map(report_action => {
+            const id = report_action.id;
+            return callOdooRpc('ir.actions.report', 'search_read', [[['id', '=', id]]], { 'fields': ['name', 'report_name'] }).then(result => {
+              console.log(result);
+              return result[0];
+            });
+          });
 
-    callOdooRpc(model, 'load_views', [], {
-      options: {
-        action_id: getCurrentAction().id,
-        toolbar: true,
-        load_filters: true,
-      },
-      views: [[false, "kanban"], [false, "list"], [false, "pivot"], [false, "form"]],
-    }).then(async function (result) {
-      const field_views = result.fields_views;
-      const reports_actions = field_views[view_type].toolbar.print;
-      if (reports_actions) {
-        const reportPromises = reports_actions.map(report_action => {
-          const id = report_action.id;
-          return callOdooRpc('ir.actions.report', 'search_read', [[['id', '=', id]]], { 'fields': ['name', 'report_name'] }).then(result => result[0]);
-        });
+          const report_list = await Promise.all(reportPromises);
+          console.log(report_list);
 
-        const report_list = await Promise.all(reportPromises);
-        console.log(report_list);
+          setReports({
+            isActive: true,
+            reports: report_list
+          });
+        }
+      }).catch(function (error) {
+        console.error(error);
+      });
+    } else if (version == 17) {
+      callOdooRpc(model, 'get_views', [], {
+        options: {
+          action_id: getCurrentAction().id,
+          toolbar: true,
+          load_filters: true,
+        },
+        views: [[false, "kanban"], [false, "list"], [false, "pivot"], [false, "form"]],
+      }).then(async function (result) {
+        console.log(result);
+        const field_views = result.views;
+        const reports_actions = field_views[view_type].toolbar.print;
+        if (reports_actions) {
+          const reportPromises = reports_actions.map(report_action => {
+            const id = report_action.id;
+            return callOdooRpc('ir.actions.report', 'search_read', [[['id', '=', id]]], { 'fields': ['name', 'report_name'] }).then(result => {
+              console.log(result);
+              return result[0]
+            });
+          });
 
-        setReports({
-          isActive: true,
-          reports: report_list
-        });
-      }
-    }).catch(function (error) {
-      console.error(error);
-    });
+          const report_list = await Promise.all(reportPromises);
+          console.log(report_list);
+
+          setReports({
+            isActive: true,
+            reports: report_list
+          });
+        }
+      }).catch(function (error) {
+        console.error(error);
+      });
+    }
   }
 
   return (
