@@ -130,12 +130,15 @@ const App = () => {
       }
     };
 
-    document.addEventListener('contextmenu', handleRightClick);
+    document.addEventListener('contextmenu', (event) => {
+      if (event.ctrlKey) {
+        handleRightClick(event);
+      }
+    });
     document.addEventListener('click', handleLeftClick);
 
     return () => {
       // Limpia el event listener cuando el componente se desmonta
-      document.removeEventListener('contextmenu', handleRightClick);
       document.removeEventListener('click', handleLeftClick);
     };
   }, []); // Dependencias vacías para que se ejecute solo en el montaje y desmontaje

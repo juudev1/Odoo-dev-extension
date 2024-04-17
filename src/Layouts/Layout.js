@@ -3,6 +3,7 @@ import './Layout.css';
 const Layout = ({ children }) => {
     const handleToggleDrawer = () => {
         const drawer = document.getElementById('drawer-example');
+        if (!drawer) return console.error('Drawer not found');
         const isVisible = drawer.getAttribute('data-drawer-show') === 'drawer-example';
 
         if (isVisible) {
@@ -13,10 +14,20 @@ const Layout = ({ children }) => {
             drawer.style.transform = 'translateX(0)';
         }
     }
+    
+    const handleMouseDown = (e) => {
+        const $element = document.getElementById('odoo-dev-btn');
+        const offsetX = $element.offsetWidth / 2;
+        const offsetY = $element.offsetHeight / 2;
+        $element.style.left = e.clientX - offsetX + 'px';
+        $element.style.top = e.clientY - offsetY + 'px';   
+        $element.style.right = 'auto';
+        $element.style.bottom = 'auto';
+    }
 
     return (
         <div>
-            <button onClick={handleToggleDrawer} id="odoo-dev-btn" type="button" data-drawer-target="drawer-example" data-drawer-show="drawer-example" aria-controls="drawer-example">
+            <button draggable="true" onDragEnd={handleMouseDown} onClick={handleToggleDrawer} id="odoo-dev-btn" type="button" data-drawer-target="drawer-example" data-drawer-show="drawer-example" aria-controls="drawer-example">
                 Odoo Dev
             </button>
 
