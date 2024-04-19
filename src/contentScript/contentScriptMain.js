@@ -8,7 +8,9 @@ window.addEventListener("message", (event) => {
     const { data } = event;
     if (data.type && data.type === 'FROM_PAGE') {
         if (data.state && data.state != "SOME STATE" && window.hasOwnProperty('odoo')) {
-            console.log(data.state);
+            const odoo = window.odoo;
+            if (odoo && !odoo.hasOwnProperty('info')) return
+
             const script = document.body.appendChild(document.createElement('script'));
             script.src = data.state;
             script.onload = () => {
