@@ -26,6 +26,16 @@
                         </div>
                     </t>
                 </t>
+
+                <t t-if="state.reports">
+                    <t t-foreach="state.reports" t-as="report" t-key="report.id">
+                        <div class="dev-sidebar-item">
+                            <a class="dev-sidebar-link" t-att-href="report.url" target="_blank">
+                                <strong t-esc="report.name" />
+                            </a>
+                        </div>
+                    </t>
+                </t>
             </div>
         </div>
         <div class="floating-button" t-on-click="toggleSideBar">

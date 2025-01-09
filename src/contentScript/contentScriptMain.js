@@ -80,24 +80,44 @@ window.addEventListener("message", (event) => {
                 // });
             }
 
+            clearOutput() {
+                this.state.recordFields = [];
+                this.state.reports = [];
+                console.log("Output cleared");
+            }
+
             getRecordValues() {
                 // Limpiar los campos
-                this.state.recordFields = [];
-
-                console.log("GET RECORD VALUES");
+                this.clearOutput();
                 const record = this.props.record;
                 const recordData = record.data;
 
                 // como se requieren en clave valor se recorre el objeto
-
                 for (const key in recordData) {
-                    console.log(key, recordData[key]);
                     this.state.recordFields.push({ key: key, value: recordData[key] });
                 }
             }
 
-            getReports() {
-                console.log("GET REPORTS");
+            async getReports() {
+                // Limpiar los campos
+                this.clearOutput();
+                const model = this.props.record.resModel;
+
+                const action = await this.orm.call(
+                    'ir.actions.report',
+                    'search_read',
+                    [],
+                    {
+                        domain: [['model', '=', model]],
+                        fields: ['name', 'model', 'report_name', 'report_type'],
+                        limit: 10
+                    }
+                );
+
+                for (const report of action) {
+                    report.url = `/report/pdf/${report.report_name}/${this.props.record.resId}`;
+                    this.state.reports.push(report);
+                }
             }
 
             closeSideBar() {
