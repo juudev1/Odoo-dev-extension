@@ -28,6 +28,7 @@ window.addEventListener("message", (event) => {
         'use strict';
         const { loadFile } = require('@odoo/owl');
         const { registry } = require('@web/core/registry');
+        const { loadCSS } = require("@web/core/assets");
 
         // Cargar todas las plantillas XML de manera asíncrona
         const templatePromises = xmlFiles.map(file => loadFile(file));
@@ -39,10 +40,17 @@ window.addEventListener("message", (event) => {
         });
 
         TEMPLATES += '</templates>';
-        console.log("TEMPLATES", TEMPLATES);
+        // console.log("TEMPLATES", TEMPLATES);
 
         // const payload = { operation: "add", 'odoo_dev': TEMPLATES };
         // registry.category("xml_templates").trigger("UPDATE", payload);
+
+
+        cssFiles.forEach(async (file) => {
+            console.log("CSS", file);
+            // const css = await loadFile(file);
+            await loadCSS(file);
+        });
 
         registry.category(`xml_templates`).add(`odoo_dev`, TEMPLATES);
     });
@@ -54,87 +62,61 @@ window.addEventListener("message", (event) => {
         const { Component, mount, useState, whenReady, loadFile, onWillStart, App, xml, TemplateSet, parseXML } = require('@odoo/owl');
         const { useService } = require("@web/core/utils/hooks");
         const { _t } = require("@web/core/l10n/translation");
-        const { makeEnv, startServices } = require("@web/env");
-        const { WebClientEnterprise } = require("@web_enterprise/webclient/webclient");
-        const { startWebClient } = require("@web/start");
-        const { ActionContainer } = require("@web/webclient/actions/action_container");
-        const { patch } = require("@web/core/utils/patch");
-        const { registry } = require('@web/core/registry');
-        const { loadJS, loadCSS, loadBundle } = require("@web/core/assets");
-        // const { templates } = require("@web/core/assets");
-
-        loadBundle('odoo_dev.bundle.xml');
+        const { FormController } = require("@web/views/form/form_controller");
 
         class SideBarDev extends Component {
-            state = useState({
-                data: null,
-            });
 
             setup() {
-                console.log("SETUP");
-                try {
-                    this.orm = useService('orm');
-                    console.log("ORM Service Found:", this.orm);
-                } catch (e) {
-                    console.error("ORM Service Not Found:", e);
-                }
+                // console.log("SETUP");
+                this.orm = useService('orm');
 
+                this.state = useState({
+                    recordFields: [],
+                    isVisible: false, // Estado para controlar la visibilidad del sidebar
+                    reports: []
+                });
                 // onWillStart(async () => {
                 //     // 
                 // });
             }
 
-            getRecordValues(){
+            getRecordValues() {
+                // Limpiar los campos
+                this.state.recordFields = [];
+
                 console.log("GET RECORD VALUES");
-                console.log(this);
-                // const record = this.orm.searchRead()
+                const record = this.props.record;
+                const recordData = record.data;
+
+                // como se requieren en clave valor se recorre el objeto
+
+                for (const key in recordData) {
+                    console.log(key, recordData[key]);
+                    this.state.recordFields.push({ key: key, value: recordData[key] });
+                }
+            }
+
+            getReports() {
+                console.log("GET REPORTS");
+            }
+
+            closeSideBar() {
+                this.state.isVisible = false; // Cambia el estado para ocultar el sidebar
+            }
+
+            openSideBar() {
+                this.state.isVisible = true; // Método opcional para reabrir el sidebar
+            }
+
+            toggleSideBar() {
+                this.state.isVisible = !this.state.isVisible; // Cambia el estado para mostrar u ocultar el sidebar
             }
         }
-
-        cssFiles.forEach(async (file) => {
-            const css = await loadFile(file);
-            // loadCSS(css);
-        });
 
         SideBarDev.template = "odoo_dev.SideBar";
 
-        ActionContainer.components = { ...ActionContainer.components, SideBarDev };
-        ActionContainer.template = xml`
-        <t t-name="web.ActionContainer">
-            <div class="d-flex flex-row flex-grow">
-                <div class="o_action_manager flex-grow-1">
-                    <t t-if="info.Component" t-component="info.Component" className="'o_action'" t-props="info.componentProps" t-key="info.id"/>
-                </div>
-                 <!-- Sidebar reducido -->
-                <div class="sidebar-dev">
-                    <SideBarDev />
-                </div>
-            </div>
-        </t>`;
-
-
-        class ActionContainerDev extends ActionContainer {
-            setup() {
-                console.log("SETUP ActionContainerDev");
-                super.setup();
-                this.orm = useService('orm');
-                console.log("ORM Service Found:", this.orm);
-            }
-        }
-
-
-
-
+        FormController.components = { ...FormController.components, SideBarDev };
+        FormController.template = 'odoo_dev.FormView';
     });
 
 }, false);
-
-//post something back to content script
-window.postMessage(
-    {
-        type: 'FROM_PAGE',
-        state: 'some state'
-    },
-    "*"
-);
-

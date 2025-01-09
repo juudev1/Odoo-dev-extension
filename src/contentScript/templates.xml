@@ -1,15 +1,106 @@
 <templates>
     <t t-name="odoo_dev.SideBar">
-        <div>
-            <h1>Odoo Extension</h1>
+        <div class="col-3 dev-sidebar" t-if="state.isVisible">
+            <div class="dev-sidebar-header">
+                <h4>Odoo Dev Tools</h4>
+                <button id="close" t-on-click="closeSideBar"
+                >close</button>
+            </div>
 
-            <div class="dev-sidebar p-2">
+            <div class="dev-sidebar-options">
+                <button class="dev-sidebar-option" t-on-click="getRecordValues">
+                    Get Record Values
+                </button>
+                <button class="dev-sidebar-option" t-on-click="getReports">
+                    Get Reports
+                </button>
+            </div>
 
-                <div class="dev-sidebar-item">
-                    <a href="#" class="dev-sidebar-link" data-action="openModel" t-on-click="getRecordValues">
-                        Get Record Values
-                    </a>
-                </div>
+            <div class="dev-sidebar-output">
+                <t t-if="state.recordFields">
+                    <t t-foreach="state.recordFields" t-as="field" t-key="field.key">
+                        <div class="dev-sidebar-item">
+                            <span class="dev-sidebar-link">
+                                <strong t-esc="field.key" />: <t t-esc="field.value" />
+                            </span>
+                        </div>
+                    </t>
+                </t>
+            </div>
+        </div>
+        <div class="floating-button" t-on-click="toggleSideBar">
+            <i class="fa fa-bug"></i>
+        </div>
+    </t>
+
+    <!-- Como se perdió la bondad de heredar plantillas, ya que se hace desde python en el manifest -->
+    <!-- ver el archivo de assets resultante, veras que no tiene t-inherit, porque se procesó en
+    base/models/assetsbundle.py -->
+    <t t-name="odoo_dev.FormView" t-inherit="web.FormView" t-inherit-mode="primary">
+        <div t-att-class="className" t-ref="root">
+            <div class="o_form_view_container">
+                <Layout className="model.useSampleModel ? 'o_view_sample_data' : ''"
+                    display="display">
+                    <t t-set-slot="control-panel-create-button">
+                        <t t-if="canCreate">
+                            <button type="button" class="btn btn-secondary o_form_button_create"
+                                data-hotkey="c" t-on-click.stop="create">New</button>
+                        </t>
+                    </t>
+
+                    <t t-set-slot="layout-buttons">
+                        <t t-if="env.inDialog">
+                            <t t-if="footerArchInfo">
+                                <t t-component="props.Renderer" record="model.root"
+                                    Compiler="props.Compiler" archInfo="footerArchInfo" />
+                            </t>
+                            <t t-else="">
+                                <t t-call="{{ props.buttonTemplate }}" />
+                            </t>
+                        </t>
+                    </t>
+
+                    <t t-set-slot="layout-actions">
+                        <t t-if="buttonBoxTemplate">
+                            <t t-call="{{ buttonBoxTemplate }}"
+                                t-call-context="{ __comp__: Object.assign(Object.create(this), { this, props: { ...this.props, record: this.model.root } }) }" />
+                        </t>
+                    </t>
+
+                    <t t-set-slot="control-panel-additional-actions">
+                        <CogMenu
+                            getActiveIds="() => model.root.isNew ? [] : [model.root.resId]"
+                            context="props.context"
+                            items="props.info.actionMenus ? this.actionMenuItems : {}"
+                            isDomainSelected="model.root.isDomainSelected"
+                            resModel="model.root.resModel"
+                            domain="props.domain"
+                            onActionExecuted="() => model.load({ resId: model.root.resId, resIds: model.root.resIds })"
+                            shouldExecuteAction.bind="shouldExecuteAction"
+                        />
+                    </t>
+
+                    <t t-set-slot="control-panel-status-indicator">
+                        <t t-if="canEdit">
+                            <FormStatusIndicator model="model" discard.bind="discard"
+                                save.bind="saveButtonClicked" />
+                        </t>
+                    </t>
+                    <t t-set-slot="control-panel-create-button">
+                        <t t-if="canCreate">
+                            <button type="button"
+                                class="btn btn-outline-primary o_form_button_create"
+                                data-hotkey="c"
+                                t-on-click.stop="create">New</button>
+                        </t>
+                    </t>
+                    <t t-component="props.Renderer" record="model.root"
+                        Compiler="props.Compiler"
+                        archInfo="archInfo" translateAlert="translateAlert"
+                        onNotebookPageChange.bind="onNotebookPageChange"
+                        activeNotebookPages="props.state and props.state.activeNotebookPages" />
+                </Layout>
+                <SideBarDev record="model.root" />
             </div>
         </div>
     </t>

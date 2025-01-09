@@ -18,7 +18,8 @@
         "scripting",
         "tabs",
         "notifications",
-        "storage"
+        "storage",
+        "background"
     ],
     "host_permissions": [
         "https://*/*",

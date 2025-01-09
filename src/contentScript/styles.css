@@ -1,13 +1,132 @@
-.sidebar-dev {
-  width: 250px; /* Ancho reducido */
-  background-color: #018ada; /* Color de fondo claro */
-  border-left: 1px solid #ddd; /* Línea divisoria */
-  overflow-y: auto; /* Scroll si el contenido es largo */
-  height: 100%; /* Ocupar todo el alto */
-  position: relative; /* Ajustar dentro del contenedor */
-  padding: 10px; /* Espaciado interno */
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* Sombra discreta */
+.dev-sidebar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 999999999;
+  width: 300px;
+  /* Ancho reducido */
+  background-color: #fff;
+  /* Color de fondo claro */
+  border-left: 1px solid #ddd;
+  /* Línea divisoria */
+  overflow-y: auto;
+  /* Scroll si el contenido es largo */
+  height: 100%;
+  /* Ocupar todo el alto */
+  padding: 10px;
+  /* Espaciado interno */
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  /* Sombra discreta */
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.dev-sidebar-output {
+  overflow-y: auto;
+  /* Scroll si el contenido es largo */
+}
+
+#close {
+  overflow: hidden;
+  position: relative;
+  border: none;
+  padding: 0;
+  width: 2em;
+  height: 2em;
+  border-radius: 50%;
+  background: transparent;
+  color: #1da1f2;
+  font: inherit;
+  text-indent: 100%;
+  cursor: pointer;
+
+  &:focus {
+    outline: solid 0 transparent;
+    box-shadow: 0 0 0 2px #8ed0f9;
+  }
+
+  &:hover {
+    background: rgba(29, 161, 142, 0.1);
+  }
+
+  &:before,
+  &:after {
+    position: absolute;
+    top: 15%;
+    left: calc(50% - 0.0625em);
+    width: 0.125em;
+    height: 70%;
+    border-radius: 0.125em;
+    transform: rotate(45deg);
+    background: currentcolor;
+    content: "";
+  }
+
+  &:after {
+    transform: rotate(-45deg);
+  }
+}
+
+/* BOTON FLOTANTE */
+.floating-button {
+  position: absolute;
+  width: 65px;
+  height: 65px;
+  background: #2cb3f0;
+  border-radius: 50%;
+  /* left: 0; */
+  right: 20px;
+  bottom: 20px;
+  margin: auto;
+  color: white;
+  line-height: 65px;
+  text-align: center;
+  font-size: 23px;
+  z-index: 100;
+  box-shadow: 0 10px 25px -5px rgba(44, 179, 240, 0.6);
+  cursor: pointer;
+  -webkit-transition: all 0.3s;
+  transition: all 0.3s;
+}
+
+.dev-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dev-sidebar-header h4 {
+  position: relative;
+  /* Necesario para posicionar el ::after relativo al h4 */
+}
+
+.dev-sidebar-header h4::after {
+  content: "By Juuxn";
+  position: absolute;
+  bottom: -15px;
+  right: -30px;
+  color: #64626260;
+  font-size: 1rem;
+}
+
+.dev-sidebar-options{
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dev-sidebar-option{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  width: 100%;
+}
+
+.dev-sidebar-option:hover{
+  background-color: #f9f9f9;
 }
