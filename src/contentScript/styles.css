@@ -1,0 +1,13 @@
+.sidebar-dev {
+  width: 250px; /* Ancho reducido */
+  background-color: #018ada; /* Color de fondo claro */
+  border-left: 1px solid #ddd; /* Línea divisoria */
+  overflow-y: auto; /* Scroll si el contenido es largo */
+  height: 100%; /* Ocupar todo el alto */
+  position: relative; /* Ajustar dentro del contenedor */
+  padding: 10px; /* Espaciado interno */
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1); /* Sombra discreta */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

@@ -7,9 +7,6 @@
         "default_popup": "/static/index.html",
         "default_icon": "/assets/images/odoo_dev.png"
     },
-    "background": {
-        "service_worker": "src/background.js"
-    },
     "icons": {
         "16": "/assets/images/odoo_dev.png",
         "32": "/assets/images/odoo_dev.png",
@@ -54,7 +51,8 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "build/main.js"
+                "src/contentScript/templates.xml",
+                "src/contentScript/styles.css"
             ],
             "matches": [
                 "http://*/*",

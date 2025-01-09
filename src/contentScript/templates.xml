@@ -1,0 +1,17 @@
+<templates>
+    <t t-name="odoo_dev.SideBar">
+        <div>
+            <h1>Odoo Extension</h1>
+
+            <div class="dev-sidebar p-2">
+
+                <div class="dev-sidebar-item">
+                    <a href="#" class="dev-sidebar-link" data-action="openModel" t-on-click="getRecordValues">
+                        Get Record Values
+                    </a>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>
