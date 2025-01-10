@@ -23,7 +23,8 @@
     ],
     "host_permissions": [
         "https://*/*",
-        "http://*/*"
+        "http://*/*",
+        "https://*/*/*"
     ],
     "content_scripts": [
         {

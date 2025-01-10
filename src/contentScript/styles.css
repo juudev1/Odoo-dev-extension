@@ -1,5 +1,6 @@
-.o_home_menu_background, .o_web_client.o_home_menu_background {
-background-image: url('https://wallpapercat.com/w/full/7/7/4/1198914-2560x1440-desktop-hd-studio-ghibli-wallpaper-photo.jpg');
+.o_home_menu_background,
+.o_web_client.o_home_menu_background {
+  background-image: url("https://wallpapercat.com/w/full/7/7/4/1198914-2560x1440-desktop-hd-studio-ghibli-wallpaper-photo.jpg");
 }
 
 .dev-sidebar {
@@ -7,7 +8,7 @@ background-image: url('https://wallpapercat.com/w/full/7/7/4/1198914-2560x1440-d
   right: 0;
   top: 0;
   z-index: 999999999;
-  width: 300px;
+  width: 350px;
   /* Ancho reducido */
   background-color: #fff;
   /* Color de fondo claro */
@@ -17,7 +18,7 @@ background-image: url('https://wallpapercat.com/w/full/7/7/4/1198914-2560x1440-d
   /* Scroll si el contenido es largo */
   height: 100%;
   /* Ocupar todo el alto */
-  padding: 10px;
+  padding: 20px;
   /* Espaciado interno */
   box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
   /* Sombra discreta */
@@ -114,14 +115,14 @@ background-image: url('https://wallpapercat.com/w/full/7/7/4/1198914-2560x1440-d
   font-size: 1rem;
 }
 
-.dev-sidebar-options{
+.dev-sidebar-options {
   margin-top: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.dev-sidebar-option{
+.dev-sidebar-option {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -131,6 +132,53 @@ background-image: url('https://wallpapercat.com/w/full/7/7/4/1198914-2560x1440-d
   width: 100%;
 }
 
-.dev-sidebar-option:hover{
+.dev-sidebar-option:hover {
+  background-color: #f9f9f9;
+}
+
+.dev-sidebar-item {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  padding: 5px;
+  border-bottom: 1px solid #ddd;
+}
+
+.dev-sidebar-item span {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 7;
+  -webkit-box-orient: vertical;
+}
+
+.copy-button {
+  height: 30px;
+}
+
+.copy-button:hover {
+  background-color: #f9f9f9;
+}
+
+.copy-button:active {
+  background-color: #f0f0f0;
+}
+
+.dev-sidebar-input {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.dev-sidebar-btn-run-method {
+  width: 100%;
+  border-radius: 5px;
+  outline: none;
+  border: none;
+  margin-top: 5px;
+  height: 30px;
+}
+
+.dev-sidebar-btn-run-method:hover {
   background-color: #f9f9f9;
 }
