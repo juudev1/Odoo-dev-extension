@@ -24,6 +24,16 @@ window.addEventListener("message", (event) => {
 
     // !window.location.pathname.includes('/odoo') para odoo 18, ajustar para usar registerTemplate
     if (window.location.pathname != '/web') return;
+    if (!window.odoo) return;
+
+    if (window.odoo.session_info) {
+        if (window.odoo.session_info.server_version_info && window.odoo.session_info.server_version_info[0] != 17) return; // Para odoo 14
+    } else if (window.odoo.info) {
+        if (window.odoo.info.server_version_info && window.odoo.info.server_version_info[0] != 17) return;
+    } else {
+        return;
+    }
+    console.log("Version", window.odoo.info.server_version_info);
 
     odoo.define('odoo_dev.bundle.xml', ['@web/core/registry'], async function (require) {
         'use strict';
@@ -291,11 +301,13 @@ window.addEventListener("message", (event) => {
             }
 
             runModelMethodOpt() {
+                // Limpiar los campos
+                this.clearOutput();
                 console.log("Run model method");
                 this.state.showRunModelMethod = true;
             }
 
-            runModelMethod(){
+            runModelMethod() {
                 console.log("Run model method");
                 console.log("Model method input", this.modelMethodInput.el.value);
 
