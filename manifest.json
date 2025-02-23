@@ -36,7 +36,10 @@
             "world": "MAIN",
             "all_frames": true,
             "matches": [
-                "<all_urls>"
+                "http://*/web",
+                "https://*/web",
+                "http://*/web?*",
+                "https://*/web?*"
             ]
         },
         {
@@ -47,7 +50,10 @@
             "world": "ISOLATED",
             "all_frames": true,
             "matches": [
-                "<all_urls>"
+                "http://*/web",
+                "https://*/web",
+                "http://*/web?*",
+                "https://*/web?*"
             ]
         }
     ],
