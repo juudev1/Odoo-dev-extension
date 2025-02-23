@@ -1,5 +1,6 @@
 <templates>
-    <t t-name="odoo_dev.ListRenderer16" owl="1">
+    <t t-name="odoo_dev.ListRenderer16" t-inherit="web.ListRenderer" t-inherit-mode="extension"
+        owl="1">
         <div
             class="o_list_renderer o_renderer table-responsive"
             t-attf-class="{{ props.archInfo.className or '' }}"
@@ -30,7 +31,7 @@
                                 t-on-mouseup="onColumnTitleMouseUp"
                                 t-on-click="() => this.onClickSortColumn(column)"
                                 t-on-keydown="(ev) => this.onCellKeydown(ev)"
-                                t-att-data-devinfo-template="isDebugMode ? 'web.FieldTooltip' : 'web.ListHeaderTooltip'"
+                                t-att-data-devinfo-template="'odoo_dev.FieldTooltip'"
                                 t-att-data-devinfo-info="makeTooltip(column)"
                                 data-tooltip-delay="1000"
                                 tabindex="-1">
@@ -228,5 +229,16 @@
                 </tfoot>
             </table>
         </div>
+    </t>
+
+    <t t-name="odoo_dev.ListRenderer18" t-inherit="web.ListRenderer" t-inherit-mode="primary"
+        owl="1">
+        <xpath expr="//div[contains(@t-att-data-tooltip-template, 'ListHeaderTooltip')]"
+            position="attributes">
+            <attribute name="t-att-data-devinfo-template">'odoo_dev.FieldTooltip'</attribute>
+            <attribute name="t-att-data-devinfo-info">makeTooltip(column)</attribute>
+            <attribute name="t-att-data-tooltip-template"></attribute>
+            <attribute name="t-att-data-tooltip-info"></attribute>
+        </xpath>
     </t>
 </templates>

@@ -8,8 +8,6 @@ odoo.define('odoo_dev.form_controller', ['@web/views/form/form_controller', '@we
 
     FormController.components = { ...FormController.components, SideBarDev };
 
-    console.log("Odoo version: ", odoo.info.server_version);
-
     if (odoo.info.server_version_info[0] === 16) {
         FormController.template = 'odoo_dev.FormView16';
     } else if (odoo.info.server_version_info[0] === 17) {
