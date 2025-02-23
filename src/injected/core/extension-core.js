@@ -44,6 +44,11 @@ class ExtensionCore {
             ],
         };
     }
+
+    static get extensionData() {
+        return this.#extensionData;
+    }
+
 }
 
 export default ExtensionCore;
