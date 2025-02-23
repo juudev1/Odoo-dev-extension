@@ -1,4 +1,4 @@
-odoo.define('odoo_dev.services.tooltip', ['@web/core/registry'], function (require) {
+odoo.define('odoo_dev.services.tooltip', ['@odoo/owl', '@web/core/utils/hooks'], function (require) {
     const { useService } = require("@web/core/utils/hooks");
     const { useEffect, useRef } = require("@odoo/owl");
 

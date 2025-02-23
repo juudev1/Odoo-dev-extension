@@ -1,5 +1,5 @@
 <templates>
-    <t t-name="odoo_dev.ViewButtonTooltip">
+    <t t-name="odoo_dev.ViewButtonTooltip" owl="1">
         <div class="o-tooltip--string" t-if="debug || button.string" role="tooltip">
             <t> Button <t t-if="button.string">: </t>
                 <t t-if="!button.string"> (no
@@ -58,7 +58,7 @@
         </ul>
     </t>
 
-    <t t-name="odoo_dev.ViewButton">
+    <t t-name="odoo_dev.ViewButton" owl="1">
         <t t-tag="props.tag"
             t-att="props.attrs"
             t-att-id="props.id"

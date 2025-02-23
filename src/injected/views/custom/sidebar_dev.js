@@ -1,6 +1,6 @@
 import './field_xpath';
 
-odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/hooks'], function (require) {
+odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/hooks', 'odoo_dev.components.field_xpath'], function (require) {
     const { Component, useState, useRef } = require('@odoo/owl');
     const { useService } = require("@web/core/utils/hooks");
     const { FieldXpath } = require('odoo_dev.components.field_xpath');

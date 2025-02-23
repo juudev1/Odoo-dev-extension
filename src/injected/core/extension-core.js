@@ -32,11 +32,11 @@ class ExtensionCore {
     static get resources() {
         return {
             templates: [
-                this.getUrl('src/injected/templates/templates.xml'),
                 this.getUrl('src/injected/views/list/list_renderer.xml'),
                 this.getUrl('src/injected/views/form/form_view.xml'),
                 this.getUrl('src/injected/views/field.xml'),
                 this.getUrl('src/injected/views/view_button/view_button.xml'),
+                this.getUrl('src/injected/views/custom/sidebar_dev.xml'),
             ],
             css: [
                 this.getUrl('src/injected/tooltip/css/tooltip.css'),

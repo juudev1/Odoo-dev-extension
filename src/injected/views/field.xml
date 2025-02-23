@@ -1,6 +1,6 @@
 <templates>
 
-    <t t-name="odoo_dev.FieldTooltip">
+    <t t-name="odoo_dev.FieldTooltip" owl="1">
         <span>Facha o no? 😎</span>
         <p t-if="field.help" class="o-tooltip--help" role="tooltip">
             <t t-esc="field.help" />
@@ -77,7 +77,7 @@
         </ul>
     </t>
 
-    <t t-name="odoo_dev.Field">
+    <t t-name="odoo_dev.Field" owl="1">
         <div t-att-class="classNames"
             t-att-style="props.style"
             t-att="{'data-devinfo-template': 'odoo_dev.FieldTooltip', 'data-devinfo-info': tooltip, 'data-tooltip-touch-tap-to-show': 'true'}">
@@ -86,7 +86,16 @@
         </div>
     </t>
 
-    <t t-name="odoo_dev.FormLabel">
+    <t t-name="odoo_dev.Field16" owl="1">
+        <div t-att-class="classNames"
+            t-att-style="props.style"
+            t-att="{'data-devinfo-template': 'odoo_dev.FieldTooltip', 'data-devinfo-info': tooltip, 'data-tooltip-touch-tap-to-show': 'true'}">
+            <t t-component="FieldComponent"
+                t-props="fieldComponentProps" />
+        </div>
+    </t>
+
+    <t t-name="odoo_dev.FormLabel" owl="1">
         <label class="o_form_label" t-att-for="props.id"
             t-att-class="className"
             t-att="{'data-devinfo-template': 'odoo_dev.FieldTooltip', 'data-devinfo-info': tooltipInfo, 'data-devinfo-touch-tap-to-show': 'true'}"
@@ -95,7 +104,7 @@
         </label>
     </t>
 
-    <t t-name="odoo_dev.FieldXpath">
+    <t t-name="odoo_dev.FieldXpath" owl="1">
         <button class="copy-button" t-on-click="copyCode" aria-label="Copy code" title="Copy xpath">
             <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

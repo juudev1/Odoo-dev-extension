@@ -1,5 +1,5 @@
 <templates>
-    <t t-name="odoo_dev.SideBar">
+    <t t-name="odoo_dev.SideBar" owl="1">
         <div class="col-3 dev-sidebar" t-if="state.isVisible">
             <div class="dev-sidebar-header">
                 <h4>Odoo Dev Tools</h4>
@@ -66,5 +66,4 @@
             <i class="fa fa-bug"></i>
         </div>
     </t>
-    
 </templates>
