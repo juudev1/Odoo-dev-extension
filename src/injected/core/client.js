@@ -2,7 +2,6 @@ import '../templates/bundle_xml.js';
 import ExtensionCore from './extension-core.js';
 
 odoo.define('odoo_dev.web_client', ['odoo_dev.bundle.xml'], async function (require) {
-    console.log('Client');
     const xmlBundle = require('odoo_dev.bundle.xml');
 
     try {

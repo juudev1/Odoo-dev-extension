@@ -9,7 +9,6 @@ odoo.define('odoo_dev.patches.field', ['@web/views/fields/field', '@web/views/fi
 
     patch(Field.prototype, {
         get tooltip() {
-            console.log('Field.prototype.tooltip', this.props.record.fields[this.props.name]);
             const tooltip = getTooltipInfo({
                 field: this.props.record.fields[this.props.name],
                 fieldInfo: this.props.fieldInfo || {

@@ -41,7 +41,6 @@ odoo.define('odoo_dev.services.devinfo', ['@web/core/registry', "@web/core/toolt
 
                 let count = 0;
                 while (el && el !== document.documentElement && count < 10) {
-                    console.log("el", el);
                     if (elementsWithTooltips.has(el)) {
                         const opened = openDevInfo(el, elementsWithTooltips.get(el));
                         if (opened) return;
