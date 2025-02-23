@@ -7,6 +7,7 @@
         "default_popup": "/static/index.html",
         "default_icon": "/assets/images/odoo_dev.png"
     },
+    "default_locale": "en",
     "icons": {
         "16": "/assets/images/odoo_dev.png",
         "32": "/assets/images/odoo_dev.png",
@@ -30,7 +31,7 @@
         {
             "run_at": "document_end",
             "js": [
-                "/src/contentScript/contentScriptMain.js"
+                "dist/loader.bundle.js"
             ],
             "world": "MAIN",
             "all_frames": true,
@@ -41,7 +42,7 @@
         {
             "run_at": "document_end",
             "js": [
-                "/src/contentScript/contentScriptIsolated.js"
+                "dist/contentScript.bundle.js"
             ],
             "world": "ISOLATED",
             "all_frames": true,
@@ -53,13 +54,15 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "src/contentScript/templates.xml",
-                "src/contentScript/styles.css"
+                "dist/*.bundle.js",
+                "src/injected/*"
             ],
             "matches": [
-                "http://*/*",
-                "https://*/*"
+                "<all_urls>"
             ]
         }
-    ]
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self';"
+    }
 }

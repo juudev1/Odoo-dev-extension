@@ -1,0 +1,1 @@
+(()=>{var e,r;e=chrome.runtime.id,r=chrome.runtime.getURL(""),window.postMessage({type:"EXTENSION_INIT",data:{id:e,url:r,version:chrome.runtime.getManifest().version}},"*")})();
