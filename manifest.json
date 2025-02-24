@@ -36,10 +36,11 @@
             "world": "MAIN",
             "all_frames": true,
             "matches": [
-                "http://*/web",
-                "https://*/web",
-                "http://*/web?*",
-                "https://*/web?*"
+                "http://*/web*",
+                "https://*/web*"
+            ],
+            "exclude_matches": [
+                "https://*/web/login*"
             ]
         },
         {
@@ -50,10 +51,11 @@
             "world": "ISOLATED",
             "all_frames": true,
             "matches": [
-                "http://*/web",
-                "https://*/web",
-                "http://*/web?*",
-                "https://*/web?*"
+                "http://*/web*",
+                "https://*/web*"
+            ],
+            "exclude_matches": [
+                "https://*/web/login*"
             ]
         }
     ],
