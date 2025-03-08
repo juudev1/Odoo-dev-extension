@@ -7,6 +7,12 @@
                 >close</button>
             </div>
 
+            <!-- info current db -->
+            <div class="mt-4 dev-sidebar-info">
+                <strong>Current DB: </strong>
+                <t t-esc="database" />
+            </div>
+
             <div class="dev-sidebar-options">
                 <button class="dev-sidebar-option" t-on-click="getRecordValues">
                     Get Record Values
@@ -44,11 +50,16 @@
                 </t>
 
                 <t t-if="state.showRunModelMethod">
-                    <h4>Run Model Method</h4>
-                    <input type="text" t-ref="modelMethodInput" placeholder="Method Name"
-                        class="dev-sidebar-input"
-                    />
-                    <button class="dev-sidebar-btn-run-method" t-on-click="runModelMethod">Run</button>
+                    <div class="form-group">
+                        <h4>Run Model Method</h4>
+                        <input class="form-control" type="text" t-ref="methodNameInput"
+                            placeholder="Método del modelo..." />
+                        <textarea class="form-control" t-ref="methodArgsInput"
+                            placeholder='Parámetros posicionales (JSON array)'></textarea>
+                        <textarea class="form-control" t-ref="methodKwargsInput"
+                            placeholder='Parámetros de palabra clave (JSON object)'></textarea>
+                        <button class="dev-sidebar-btn-run-method" t-on-click="runModelMethod">Run</button>
+                    </div>
 
                     <t t-if="state.modelMethodOutput">
                         <div class="dev-sidebar-item"

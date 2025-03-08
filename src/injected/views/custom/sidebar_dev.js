@@ -1,5 +1,3 @@
-import './field_xpath';
-
 odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/hooks', 'odoo_dev.components.field_xpath'], function (require) {
     const { Component, useState, useRef } = require('@odoo/owl');
     const { useService } = require("@web/core/utils/hooks");
@@ -18,7 +16,11 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 modelMethodOutput: null,
             });
 
-            this.modelMethodInput = useRef('modelMethodInput');
+            this.methodNameInput = useRef('methodNameInput');
+            this.methodArgsInput = useRef('methodArgsInput');
+            this.methodKwargsInput = useRef('methodKwargsInput');
+
+            this.database = window.odoo.info.db;
         }
 
         clearOutput() {
@@ -89,15 +91,49 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
         }
 
         async runModelMethod() {
-            const methodName = this.modelMethodInput.el.value;
+            console.log(this.methodNameInput);
+            const methodName = this.methodNameInput.el.value;
             const model = this.props.record.resModel;
             const recordId = this.props.record.resId;
 
+            let args = [];
+            let kwargs = {};
+
             try {
-                const result = await this.orm.call(model, methodName, [[recordId]], {});
+                // Obtener los argumentos posicionales
+                const argsInputValue = this.methodArgsInput.el.value.trim();
+                if (argsInputValue) {
+                    args = JSON.parse(argsInputValue); // Convertir a lista JSON
+                    if (!Array.isArray(args)) {
+                        throw new Error("Los argumentos posicionales deben ser una lista JSON.");
+                    }
+                }
+            } catch (error) {
+                console.error("Error al parsear los argumentos posicionales:", error);
+                this.state.modelMethodOutput = "Formato de argumentos posicionales inválido. Debe ser una lista JSON.";
+                return;
+            }
+
+            try {
+                // Obtener los argumentos de palabra clave
+                const kwargsInputValue = this.methodKwargsInput.el.value.trim();
+                if (kwargsInputValue) {
+                    kwargs = JSON.parse(kwargsInputValue); // Convertir a diccionario JSON
+                    if (typeof kwargs !== "object" || Array.isArray(kwargs)) {
+                        throw new Error("Los argumentos de palabra clave deben ser un diccionario JSON.");
+                    }
+                }
+            } catch (error) {
+                console.error("Error al parsear los argumentos de palabra clave:", error);
+                this.state.modelMethodOutput = "Formato de argumentos de palabra clave inválido. Debe ser un diccionario JSON.";
+                return;
+            }
+
+            try {
+                const result = await this.orm.call(model, methodName, [[recordId], ...args], kwargs);
                 this.state.modelMethodOutput = JSON.stringify(result, null, 2);
             } catch (error) {
-                console.error("Error calling model method", error);
+                console.error("Error al llamar al método del modelo", error);
                 this.state.modelMethodOutput = JSON.stringify(error, null, 2);
             }
         }

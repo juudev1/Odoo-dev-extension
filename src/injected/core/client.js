@@ -1,10 +1,10 @@
-import '../templates/bundle_xml.js';
-import ExtensionCore from './extension-core.js';
-
 odoo.define('odoo_dev.web_client', ['odoo_dev.bundle.xml'], async function (require) {
     const xmlBundle = require('odoo_dev.bundle.xml');
 
     try {
+        console.log("Iniciando la extensión...");
+        console.log(window.__devExtensionUrl);
+        console.log("Extension URL:", window.__devExtensionUrl);
         // Inicialización única
         await ExtensionCore.init();
 

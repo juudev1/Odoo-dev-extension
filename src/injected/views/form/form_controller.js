@@ -1,5 +1,3 @@
-import '../custom/sidebar_dev.js';
-
 odoo.define('odoo_dev.form_controller', ['@web/views/form/form_controller', '@web/core/utils/patch', 'odoo_dev.components.sidebar_dev'], function (require) {
     "use strict";
 
