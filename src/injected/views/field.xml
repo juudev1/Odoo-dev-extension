@@ -105,13 +105,51 @@
     </t>
 
     <t t-name="odoo_dev.FieldXpath" owl="1">
-        <button class="copy-button" t-on-click="copyCode" aria-label="Copy code" title="Copy xpath">
-            <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
-            </svg>
+        <!-- Cambiar el botón/icono y la acción -->
+        <button class="btn btn-sm btn-link p-0 field-action-btn xpath-btn"
+                t-att-disabled="state.isLoading"
+                t-on-click.prevent.stop="findAndShowViews"
+                aria-label="Find field in views and show inheritance options"
+                title="Find in views / Copy inheritance XML"
+                t-ref="xpathTrigger"> <!-- Añadir t-ref -->
+             <t t-if="!state.isLoading">
+                 <!-- Icono XML o similar -->
+                 <i class="fa fa-code"/>
+                 <!-- Alternativa: <i class="fa fa-sitemap"/> -->
+             </t>
+              <t t-if="state.isLoading">
+                 <i class="fa fa-spinner fa-spin"/>
+             </t>
         </button>
     </t>
+
+    <t t-name="odoo_dev.XPathPopoverContent" owl="1">
+        <div class="xpath-popover-content">
+            <div class="popover-header">
+                 <h6 class="popover-title">Field "<t t-esc="props.fieldName"/>" found in:</h6>
+                 <button class="btn-close btn-sm" aria-label="Close" t-on-click="close"/>
+            </div>
+            <ul class="list-group list-group-flush view-list">
+                <t t-if="props.views.length === 0">
+                     <li class="list-group-item text-muted">(Not found)</li>
+                </t>
+                <t t-foreach="props.views" t-as="view" t-key="view.viewXmlId">
+                    <li class="list-group-item view-list-item">
+                        <div class="view-info">
+                            <span class="view-name" t-att-title="view.viewXmlId">
+                                <t t-esc="view.viewName"/> <small class="text-muted"> (<t t-esc="view.viewXmlId"/>)</small>
+                            </span>
+                            <code class="view-xpath" t-att-title="view.xpath"><t t-esc="view.xpath"/></code>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary copy-xml-btn"
+                                t-on-click="() => copyXml(view)"
+                                title="Copy inheritance XML snippet">
+                            <i class="fa fa-copy me-1"/> Copy XML
+                        </button>
+                    </li>
+                </t>
+            </ul>
+        </div>
+    </t>
+
 </templates>

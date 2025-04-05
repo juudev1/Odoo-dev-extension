@@ -1,9 +1,10 @@
-odoo.define('odoo_dev.bundle.xml', ['@web/core/registry', '@odoo/owl', '@web/core/assets'], function (require) {
+odoo.define('odoo_dev.bundle.xml', ['@web/core/registry', '@odoo/owl', '@web/core/assets', 'odoo_dev.version_utils'], function (require) {
     'use strict';
 
     const { loadFile } = require('@odoo/owl');
     const { registry } = require('@web/core/registry');
     const { loadCSS, loadXML } = require("@web/core/assets");
+    const odooVersion = require('odoo_dev.version_utils'); 
 
     const xmlBundle = {
         loadTemplatesAndCSS: async function (xmlFiles, cssFiles) {
@@ -12,15 +13,15 @@ odoo.define('odoo_dev.bundle.xml', ['@web/core/registry', '@odoo/owl', '@web/cor
                 const templatePromises = xmlFiles.map(file => loadFile(file));
                 const templatesContent = await Promise.all(templatePromises);
 
-                if (!odoo.info || odoo.info.server_version_info[0] === 16) {
+                if (odooVersion.isV16) {
                     // Si es la versión 16
                     const allTemplates = "<templates>" + templatesContent.join('') + "</templates>";
                     loadXML(allTemplates);
-                } else if (!odoo.info || odoo.info.server_version_info[0] === 17) {
+                } else if (odooVersion.isV17) {
                     // Si es la versión 17
                     const allTemplates = "<templates>" + templatesContent.join('') + "</templates>";
                     registry.category('xml_templates').add('odoo_dev', allTemplates);
-                } else if (odoo.info.server_version_info[0] >= 18) {
+                } else if (odooVersion.isV18Plus) { // O usa odooVersion.isV18 si solo aplica a 18
 
                     // Si es la version 18
                     const parser = new DOMParser();

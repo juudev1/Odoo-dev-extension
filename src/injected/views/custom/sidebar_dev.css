@@ -1,8 +1,8 @@
 .dev-sidebar {
-  position: absolute;
+  position: fixed;
   right: 0;
   top: 0;
-  z-index: 999999999;
+  z-index: 10;
   width: 350px;
   /* Ancho reducido */
   background-color: #fff;
@@ -83,7 +83,7 @@
   line-height: 65px;
   text-align: center;
   font-size: 23px;
-  z-index: 100;
+  z-index: 9;
   box-shadow: 0 10px 25px -5px rgba(44, 179, 240, 0.6);
   cursor: pointer;
   -webkit-transition: all 0.3s;
@@ -118,7 +118,7 @@
 
 .dev-sidebar-option {
   display: flex;
-  justify-content: space-between;
+  /* justify-content: space-between; */
   align-items: center;
   padding: 10px;
   border: 1px solid #ddd;
@@ -145,18 +145,6 @@
   -webkit-box-orient: vertical;
 }
 
-.copy-button {
-  height: 30px;
-}
-
-.copy-button:hover {
-  background-color: #f9f9f9;
-}
-
-.copy-button:active {
-  background-color: #f0f0f0;
-}
-
 .dev-sidebar-input {
   width: 100%;
   padding: 5px;
@@ -175,4 +163,376 @@
 
 .dev-sidebar-btn-run-method:hover {
   background-color: #f9f9f9;
+}
+
+
+.record-field-item {
+  display: flex; /* Sigue siendo flex para el modo edición */
+  flex-direction: column; /* Apilar vista/edición verticalmente */
+  padding: 10px 5px; /* Más padding vertical */
+  border-bottom: 1px solid #eee;
+  width: 100%;
+}
+
+.record-field-item:last-child {
+  border-bottom: none;
+}
+
+
+.field-display-mode {
+  display: flex;
+  flex-direction: column; /* Apilar línea superior e inferior */
+  width: 100%;
+  gap: 4px; /* Espacio entre línea superior y valor */
+}
+
+/* Contenedor de la etiqueta (con posible icono readonly) */
+.field-label-container {
+  display: flex;
+  align-items: center;
+  /* Controlar el ancho máximo si es necesario, pero flex debería funcionar */
+  flex-grow: 1; /* Permitir que crezca */
+  min-width: 0; /* Permitir encoger si las acciones son muchas */
+  margin-right: 10px; /* Espacio antes de las acciones */
+}
+
+.field-label-container strong {
+  color: #333;
+  font-weight: 600; /* Hacerla más prominente */
+  white-space: nowrap; /* Evitar que la etiqueta se rompa */
+  overflow: hidden; /* Ocultar si es extremadamente larga */
+  text-overflow: ellipsis; /* Mostrar ... si es muy larga */
+}
+
+
+.field-top-line {
+  display: flex;
+  justify-content: space-between; /* Empuja label y acciones a los extremos */
+  align-items: center; /* Centrar verticalmente label y acciones */
+  width: 100%;
+}
+
+.field-key-value {
+  display: flex; /* Para alinear icono/label y valor */
+  align-items: center;
+  flex-grow: 1; /* Permite que este contenedor crezca */
+  flex-shrink: 1; /* Permite que este contenedor se encoja si es necesario */
+  min-width: 0; /* ¡CRÍTICO! Permite que flex-shrink funcione correctamente con contenido que desborda */
+  margin-right: 5px; /* Pequeño espacio antes de los botones de acción */
+}
+
+.field-key-value strong {
+  color: #333;
+  margin-right: 4px;
+  white-space: nowrap; /* Evita que la etiqueta se parta en varias líneas */
+  flex-shrink: 0; /* No permitir que la etiqueta se encoja */
+}
+
+.field-value {
+  display: block; /* Asegura que ocupe su propia línea */
+  color: #555;
+  font-size: 0.95em; /* Ligeramente más grande que antes quizás */
+  word-wrap: break-word; /* Permitir que el valor largo se ajuste */
+  white-space: normal; /* Asegurar ajuste de línea */
+  line-height: 1.4; /* Mejorar legibilidad multilínea */
+}
+
+.field-value.empty-value {
+  color: #999;
+  font-style: italic;
+}
+
+.field-value-line {
+  width: 100%; /* Ocupa todo el ancho */
+  padding-left: 5px; /* Pequeña indentación opcional */
+}
+
+.field-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0; /* No encoger las acciones */
+}
+
+.field-action-btn {
+  color: #6c757d; /* Color grisáceo para iconos */
+  padding: 0 4px !important; /* Ajuste padding bootstrap */
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  height: 30px;
+  width: 30px;
+  outline: none;
+  border: none;
+  background-color: transparent;
+}
+.field-action-btn:hover {
+  color: var(--primary-color, #0d6efd); /* Usar variable si existe */
+  opacity: 1;
+  background-color: #f9f9f9;
+}
+
+.field-edit-mode {
+  width: 100%;
+  display: flex;
+  flex-direction: column; /* Ya era column */
+  margin-top: 5px; /* Espacio si se entra en edición */
+}
+
+.field-edit-mode .form-label {
+  margin-bottom: 4px;
+  font-size: 0.9em;
+  display: flex; /* Alinear label e icono técnico */
+  align-items: center;
+  white-space: normal;
+}
+
+.edit-input {
+  margin-bottom: 5px; /* Espacio debajo del input */
+}
+
+/* Específico para checkbox */
+.field-edit-mode input[type="checkbox"].edit-input {
+  width: auto; /* Tamaño natural */
+  margin-left: 5px !important; /* Alineación */
+  margin-top: 5px;
+  margin-bottom: 8px;
+  display: block; /* Asegura espacio debajo */
+}
+
+.edit-actions {
+  margin-top: 5px;
+  display: flex;
+  gap: 5px;
+}
+
+.edit-actions .btn i {
+  margin-right: 4px;
+}
+
+.technical-field-name {
+  font-weight: normal;
+  font-size: 0.9em;
+  color: #6c757d;
+  margin-left: 4px;
+}
+
+.edit-input, .field-edit-mode select.edit-input {
+  margin-bottom: 5px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.readonly-indicator-icon {
+  color: #6c757d;
+  font-size: 0.9em;
+  cursor: help;
+  opacity: 0.8;
+  flex-shrink: 0; /* No encoger el icono */
+  margin-right: 4px !important; /* Ajustar espacio si se usa me-1 de bootstrap */
+}
+
+
+/* Run model method */
+
+.run-model-method-section .form-label-sm {
+  font-size: 0.85em;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+/* Estilo para inputs de código */
+.code-input {
+  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  border-radius: 4px;
+  border: 1px solid #ced4da; /* Ajustar color según tu tema */
+}
+textarea.code-input {
+  line-height: 1.4;
+}
+
+/* Sección de Vista Previa */
+.orm-call-preview {
+  background-color: #f0f0f0; /* Fondo ligero para destacar */
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  margin-top: 15px;
+}
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #e9ecef; /* Cabecera ligeramente diferente */
+  border-bottom: 1px solid #e0e0e0;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+}
+.preview-header h6 {
+  margin: 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: #333;
+}
+.copy-preview-btn {
+  padding: 2px 8px;
+  font-size: 0.8em;
+}
+.copy-preview-btn i {
+  margin-right: 3px;
+}
+
+/* Bloque de código de la vista previa */
+.code-preview {
+  padding: 10px 12px;
+  margin: 0;
+  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.85em;
+  white-space: pre-wrap; /* Permite que el código se ajuste */
+  word-break: break-all; /* Romper líneas largas */
+  max-height: 200px; /* Limitar altura y añadir scroll si es necesario */
+  overflow-y: auto;
+  background-color: #f8f9fa; /* Fondo claro para el código */
+  color: #212529;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+/* Botón Run con estado de carga */
+.dev-sidebar-btn-run-method {
+  /* Tus estilos existentes para el botón */
+}
+
+/* Sección de Salida */
+.model-method-output {
+  margin-top: 15px;
+}
+.model-method-output h6 {
+   margin-bottom: 5px;
+   font-size: 0.9em;
+   font-weight: 600;
+}
+.model-method-output pre {
+  padding: 12px;
+  margin: 0;
+  border-radius: 5px;
+  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 400px; /* O la altura que prefieras */
+  overflow: auto;
+  border: 1px solid transparent; /* Borde base */
+}
+.model-method-output pre code {
+  font-family: inherit; /* Heredar fuente del <pre> */
+}
+
+/* Colores para éxito/error en la salida */
+.model-method-output pre.output-success {
+   background-color: #e9f7ec; /* Verde claro */
+   border-color: #c8e6c9;
+   color: #2e7d32;
+}
+.model-method-output pre.output-error {
+   background-color: #ffebee; /* Rojo claro */
+   border-color: #ffcdd2;
+   color: #c62828;
+}
+
+/* Xpath popover */
+/* Estilos para el contenido del Popover */
+.xpath-popover-content {
+  min-width: 300px; /* Ancho mínimo */
+  max-width: 450px; /* Ancho máximo */
+  font-size: 0.9em;
+}
+
+.xpath-popover-content .popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f8f9fa; /* Fondo ligero */
+  border-bottom: 1px solid #dee2e6;
+}
+
+.xpath-popover-content .popover-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1em; /* Relativo al font-size base del popover */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xpath-popover-content .btn-close {
+  padding: 4px; /* Hacer el área de click más grande */
+  opacity: 0.7;
+}
+.xpath-popover-content .btn-close:hover {
+  opacity: 1;
+}
+
+
+.xpath-popover-content .view-list {
+  max-height: 250px; /* Altura máxima antes de scroll */
+  overflow-y: auto;
+  margin-bottom: 0; /* Quitar margen inferior de la lista */
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.xpath-popover-content .view-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 10px; /* Espacio entre info y botón */
+  /* Quitar padding de list-group-item si interfiere */
+  /* padding-left: 0; padding-right: 0; */
+}
+/* Alternar color de fondo para legibilidad (opcional) */
+/* .xpath-popover-content .view-list-item:nth-child(odd) {
+  background-color: #fdfdfd;
+} */
+
+
+.xpath-popover-content .view-info {
+  display: flex;
+  flex-direction: column; /* Apilar nombre y xpath */
+  flex-grow: 1;
+  min-width: 0; /* Para que el encogimiento funcione */
+}
+
+.xpath-popover-content .view-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.xpath-popover-content .view-name small {
+   font-weight: normal;
+}
+
+.xpath-popover-content .view-xpath {
+  font-size: 0.9em;
+  color: #6c757d;
+  background-color: transparent; /* Sin fondo de 'code' */
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+  display: block; /* Asegurar que ocupe su línea */
+}
+
+.xpath-popover-content .copy-xml-btn {
+  font-size: 0.9em;
+  padding: 3px 8px;
+  flex-shrink: 0; /* Evitar que el botón se encoja */
+}
+.xpath-popover-content .copy-xml-btn i {
+  font-size: 0.9em; /* Icono ligeramente más pequeño */
 }

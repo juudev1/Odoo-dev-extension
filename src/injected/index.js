@@ -39,6 +39,7 @@ window.ExtensionCore = ExtensionCore;
         const scripts = [
             "./core/client.js",
             "./core/extension-core.js",
+            "./utils/odoo_version_utils.js",
             "./templates/bundle_xml.js",
             "./tooltip/js/dev_info_service.js",
             "./tooltip/js/tooltip.js",

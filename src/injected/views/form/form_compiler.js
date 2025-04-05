@@ -1,12 +1,13 @@
 
-odoo.define('odoo_dev.form_compiler', ['@web/views/form/form_compiler', '@web/core/utils/patch'], function (require) {
+odoo.define('odoo_dev.form_compiler', ['@web/views/form/form_compiler', '@web/core/utils/patch', 'odoo_dev.version_utils'], function (require) {
     "use strict";
 
     const { FormCompiler } = require("@web/views/form/form_compiler")
     const { patch } = require("@web/core/utils/patch");
+    const odooVersion = require('odoo_dev.version_utils'); // <--- Obtener la utilidad
 
 
-    if (odoo.info.server_version_info[0] >= 17) {
+    if (odooVersion.isV17Plus) {
         patch(FormCompiler.prototype, {
             compileField(el, params) {
                 const field = super.compileField(el, params);

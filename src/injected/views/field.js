@@ -1,17 +1,18 @@
-odoo.define('odoo_dev.patches.field', ['@web/views/fields/field', '@web/views/fields/field_tooltip', '@web/core/utils/patch'], function (require) {
+odoo.define('odoo_dev.patches.field', ['@web/views/fields/field', '@web/views/fields/field_tooltip', '@web/core/utils/patch', 'odoo_dev.version_utils'], function (require) {
     "use strict";
 
     const { Field } = require("@web/views/fields/field");
     const { getTooltipInfo } = require('@web/views/fields/field_tooltip');
     const { patch } = require("@web/core/utils/patch");
+    const odooVersion = require('odoo_dev.version_utils'); 
 
-    if (odoo.info.server_version_info[0] == 16) {
+    if (odooVersion.isV16) {
         Field.template = 'odoo_dev.Field16';
     } else {
         Field.template = 'odoo_dev.Field';
     }
 
-    if (odoo.info.server_version_info[0] >= 17) {
+    if (odooVersion.isV17Plus) {
         patch(Field.prototype, {
             get tooltip() {
                 const tooltip = getTooltipInfo({

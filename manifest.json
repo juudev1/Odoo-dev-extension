@@ -22,11 +22,6 @@
         "storage",
         "background"
     ],
-    "host_permissions": [
-        "https://*/*",
-        "http://*/*",
-        "https://*/*/*"
-    ],
     "content_scripts": [
         {
             "run_at": "document_end",

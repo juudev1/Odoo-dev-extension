@@ -2,10 +2,11 @@
 odoo.define('odoo_dev.view_button', ['@web/views/view_button/view_button', '@web/core/utils/patch'], function (require) {
     const { ViewButton } = require('@web/views/view_button/view_button');
     const { patch } = require("@web/core/utils/patch");
+    const odooVersion = require('odoo_dev.version_utils');
 
     ViewButton.template = "odoo_dev.ViewButton";
 
-    if (odoo.info.server_version_info[0] == 16) {
+    if (odooVersion.isV16) {
         patch(ViewButton.prototype, 'odoo_dev.ViewButton', {
             setup() {
                 // Super
@@ -34,7 +35,7 @@ odoo.define('odoo_dev.view_button', ['@web/views/view_button/view_button', '@web
                 return true;
             }
         });
-    } else if (odoo.info.server_version_info[0] >= 17) {
+    } else if (odooVersion.isV17Plus) {
         patch(ViewButton.prototype, {
             setup() {
                 // Super
