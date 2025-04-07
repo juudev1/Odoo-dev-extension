@@ -67,6 +67,8 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             this.addToRunMethodHistory = this.addToRunMethodHistory.bind(this);
             this.applyHistoryItem = this.applyHistoryItem.bind(this);
             this.clearRunMethodHistory = this.clearRunMethodHistory.bind(this);
+            this.loadX2ManyCount = this.loadX2ManyCount.bind(this); 
+            this.loadMany2oneName = this.loadMany2oneName.bind(this);
 
             // Recargar valores si el recordId cambia
             onWillUpdateProps((nextProps) => {
@@ -235,67 +237,272 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
         }
 
         async getRecordValues() {
-            this.clearOutput(true); // Limpia datos pero mantiene sidebar abierto
+            this.clearOutput(true);
             const record = this.props.record;
-            this.currentModel = record ? record.resModel : 'N/A'; // Actualiza modelo por si acaso
-            this.currentRecordId = record ? record.resId : null; // Actualiza ID
-
+            this.currentModel = record ? record.resModel : 'N/A';
+            this.currentRecordId = record ? record.resId : null;
+    
             if (!record || !record.resId || !record.resModel) {
                 console.warn("Cannot get record values: No valid record or record ID.");
                 this.state.recordFields = [];
                 this.state.fieldDefinitions = {};
                 return;
             }
-
+    
+            console.log(`Fetching data field by field for ${record.resModel} ID ${record.resId}`);
+            let fieldDefs = {};
+            // Empezar con el array vacío, se llenará con resultados individuales
+            this.state.recordFields = []; // Limpiar antes de empezar
+    
             try {
-                console.log(`Fetching data for ${record.resModel} ID ${record.resId}`);
-                // Pedir valores y definiciones de campos relevantes
-                const [readResult, fieldsData] = await Promise.all([
-                    this.orm.call(record.resModel, 'read', [[record.resId]], {}),
-                    this.orm.call(record.resModel, 'fields_get', [[]], {
-                        attributes: ['string', 'type', 'readonly', 'relation', 'selection', 'required']
-                    })
-                ]);
-
-                if (readResult.length > 0) {
-                    this.state.record = readResult[0]; // Guarda el record leído
-                    this.state.fieldDefinitions = fieldsData; // Guarda definiciones
-
-                    const fieldsToShow = [];
-                    // Iterar sobre las definiciones para mantener un orden (opcional)
-                    // o iterar sobre readResult[0] para mostrar solo campos con valor
-                    for (const key in fieldsData) {
-                        // Mostrar solo si el campo existe en el resultado de read y no es one2many/many2many (simplificación)
-                        if (readResult[0].hasOwnProperty(key) && !['one2many', 'many2many'].includes(fieldsData[key].type)) {
-                            // Excluir campos binarios grandes por defecto?
-                            if (fieldsData[key].type === 'binary' && readResult[0][key] && readResult[0][key].length > 1000) {
-                                continue; // Opcional: Omitir binarios grandes
-                            }
-
-                            fieldsToShow.push({
-                                key: key,
-                                value: readResult[0][key],
-                                definition: fieldsData[key] // Adjuntar la definición completa
-                            });
-                        }
+                // 1. Obtener definiciones (seguro)
+                fieldDefs = await this.orm.call(record.resModel, 'fields_get', [[]], {
+                    attributes: ['string', 'type', 'readonly', 'relation', 'selection', 'required', 'related', 'compute', 'depends', 'company_dependent', 'groups'] // Pedir más atributos útiles
+                });
+                this.state.fieldDefinitions = fieldDefs;
+    
+                // 2. Crear un array de promesas, una por cada campo a procesar
+                const fieldProcessingPromises = [];
+                const initialPlaceholders = []; // Guardar placeholders iniciales
+    
+                for (const key in fieldDefs) {
+                    const def = fieldDefs[key];
+    
+                    // Omitir binarios related
+                    if (def.type === 'binary' && def.related) {
+                        initialPlaceholders.push({ key, value: '(Related Binary)', definition: def, accessError: false, isLoading: false, isLoaded: true });
+                        continue;
                     }
-                    // Opcional: Ordenar por nombre de campo
-                    fieldsToShow.sort((a, b) => a.key.localeCompare(b.key));
-
-                    this.state.recordFields = fieldsToShow;
-                    console.log("Record fields loaded:", this.state.recordFields);
-                } else {
-                    console.warn("Read operation returned no results.");
-                    this.state.recordFields = [];
-                    this.state.fieldDefinitions = {};
-                }
-            } catch (error) {
-                console.error("Error fetching record data or fields:", error);
-                this.notification.add("Error fetching record data.", { type: 'danger' });
-                this.state.recordFields = [];
+    
+                    // Crear placeholder inicial para todos los demás
+                    let initialValue = '(Loading...)';
+                    let initialIsLoaded = false;
+                    let fieldStatus = '';
+    
+                    if (def.type === 'many2one') {
+                        initialValue = null; initialIsLoaded = false; fieldStatus = '(Click 🔄 to load)';
+                    } else if (['one2many', 'many2many'].includes(def.type)) {
+                        initialValue = null; initialIsLoaded = false; fieldStatus = '(Click 🔄 to load count)';
+                    } else if (def.type === 'binary') {
+                         initialValue = '(Binary Data)'; initialIsLoaded = true; // No lo leeremos aquí
+                    }
+                    // Los campos simples y compute/related empiezan como (Loading...)
+    
+                    const placeholder = {
+                        key: key,
+                        value: initialValue,
+                        definition: def,
+                        accessError: false,
+                        isLoading: false, // Empezar sin cargar
+                        isLoaded: initialIsLoaded,
+                        status: fieldStatus
+                    };
+                    initialPlaceholders.push(placeholder);
+    
+                    // Crear la promesa para procesar este campo *SOLO SI NO ES RELACIONAL*
+                    // Los relacionales se manejarán con sus botones de refrescar
+                    if (!['many2one', 'one2many', 'many2many'].includes(def.type) && !(def.type === 'binary')) { // No leer binarios aquí tampoco
+    
+                        const promise = (async (targetField) => {
+                            // Copiamos el placeholder para no modificar el original directamente en la promesa
+                            let updatedField = { ...targetField };
+                            try {
+                                console.log(`Reading field: ${updatedField.key}`);
+                                // Usar un contexto mínimo, añadir bin_size si fuera necesario leer binarios
+                                const readResult = await this.orm.call(record.resModel, 'read', [[record.resId]], { fields: [updatedField.key], context: {} });
+    
+                                if (readResult.length > 0 && readResult[0].hasOwnProperty(updatedField.key)) {
+                                    const rawValue = readResult[0][updatedField.key];
+                                    // Asignar valor leído
+                                    updatedField.value = rawValue;
+                                    updatedField.isLoaded = true;
+                                    updatedField.accessError = false;
+                                    // Podríamos añadir procesamiento específico aquí (ej. boolean, selection) si es necesario
+                                    // ya que getDisplayValue lo hará después de todas formas.
+    
+                                } else {
+                                    console.warn(`Read for ${updatedField.key} did not return the field.`);
+                                    updatedField.value = '(Field Not Returned)';
+                                    updatedField.accessError = true;
+                                    updatedField.isLoaded = true;
+                                }
+                            } catch (err) {
+                                console.warn(`Access Error/Read Failed for field ${updatedField.key}:`, err);
+                                const errorMessage = err.message?.data?.message || err.message || 'Read Failed';
+                                updatedField.value = `(${errorMessage.split('\n')[0]})`; // Primera línea del error
+                                updatedField.accessError = true;
+                                updatedField.isLoaded = true; // Se intentó cargar (aunque falló)
+                            }
+                            return updatedField; // Devolver el objeto campo actualizado
+    
+                        })(placeholder); // Pasar una copia del placeholder a la promesa IIFE
+    
+                        fieldProcessingPromises.push(promise);
+                    } else {
+                         // Si es relacional o binario, creamos una promesa ya resuelta con el placeholder
+                         // para mantener la estructura de Promise.allSettled
+                         fieldProcessingPromises.push(Promise.resolve(placeholder));
+                    }
+    
+                } // Fin del for sobre fieldDefs
+    
+                // Poner placeholders en el estado AHORA
+                initialPlaceholders.sort((a, b) => (a.definition.string || a.key).localeCompare(b.definition.string || b.key));
+                this.state.recordFields = [...initialPlaceholders];
+    
+    
+                // 3. Esperar a que todas las lecturas individuales (de no relacionales) terminen
+                const results = await Promise.allSettled(fieldProcessingPromises);
+    
+                // 4. Crear el array final combinando resultados y placeholders originales
+                const finalFieldsMap = new Map();
+                // Primero, poner todos los placeholders originales en el mapa
+                initialPlaceholders.forEach(p => finalFieldsMap.set(p.key, p));
+                // Luego, actualizar con los resultados de las promesas que se ejecutaron
+                results.forEach(result => {
+                    if (result.status === 'fulfilled') {
+                        const updatedField = result.value;
+                        // Solo actualizar si la promesa devolvió un objeto válido con 'key'
+                        if (updatedField && updatedField.key) {
+                             finalFieldsMap.set(updatedField.key, updatedField);
+                        }
+                    } else {
+                        console.error("Unexpected error in field processing promise:", result.reason);
+                        // No podemos saber qué 'key' falló aquí fácilmente, así que no actualizamos el mapa
+                        // Se quedará el placeholder original "(Loading...)" o similar
+                    }
+                });
+    
+                // Convertir mapa a array y ordenar
+                const finalFieldsArray = Array.from(finalFieldsMap.values());
+                finalFieldsArray.sort((a, b) => (a.definition.string || a.key).localeCompare(b.definition.string || b.key));
+    
+    
+                // 5. Ya NO necesitamos ejecutar name_get aquí (se hace bajo demanda)
+    
+    
+                // 6. Actualizar estado final
+                this.state.recordFields = [...finalFieldsArray]; // Usar el array final
+                console.log("Record fields processed (individual reads for non-relations):", this.state.recordFields);
+    
+    
+            } catch (error) { // Error en fields_get inicial
+                console.error("Error fetching field definitions:", error);
+                this.notification.add(`Error fetching field definitions.`, { type: 'danger' });
+                this.state.recordFields = [{ key: 'ERROR', value: 'Failed to get definitions.', definition: {string: 'Error'}, accessError: true, isLoading: false, isLoaded: true }];
                 this.state.fieldDefinitions = {};
             }
         }
+
+        async loadMany2oneName(fieldKey) {
+            const fieldIndex = this.state.recordFields.findIndex(f => f.key === fieldKey);
+            if (fieldIndex === -1) return;
+    
+            const fieldData = this.state.recordFields[fieldIndex];
+            const def = fieldData.definition;
+            const model = def.relation;
+    
+            // Marcar como cargando
+            let newRecordFields = [...this.state.recordFields];
+            let updatedFieldData = { ...fieldData, isLoading: true, accessError: false };
+            newRecordFields[fieldIndex] = updatedFieldData;
+            this.state.recordFields = newRecordFields;
+    
+            console.log(`Loading name for ${fieldKey} (model: ${model})`);
+    
+            try {
+                // Primero, necesitamos leer el ID del campo m2o del registro actual
+                let m2oId = null;
+                try {
+                     const idReadResult = await this.orm.call(this.currentModel, 'read', [[this.currentRecordId]], { fields: [fieldKey] });
+                     if (idReadResult.length > 0 && idReadResult[0][fieldKey]) {
+                         // El resultado puede ser ID (número) o [ID, Name] (array)
+                         const rawIdValue = idReadResult[0][fieldKey];
+                         if (Array.isArray(rawIdValue)) {
+                             m2oId = rawIdValue[0];
+                         } else if (typeof rawIdValue === 'number') {
+                             m2oId = rawIdValue;
+                         }
+                     }
+                } catch (idReadError) {
+                     console.error(`Failed to read ID for M2O field ${fieldKey}:`, idReadError);
+                     throw new Error(`Could not read field ${fieldKey} ID`); // Lanzar para capturar abajo
+                }
+    
+    
+                let finalValue = false; // Valor si no hay ID o falla name_get
+                if (m2oId) {
+                    // Si tenemos ID, intentar obtener el nombre
+                    try {
+                        const nameGetResult = await this.orm.call(model, 'name_get', [[m2oId]]);
+                        if (nameGetResult.length > 0) {
+                            finalValue = nameGetResult[0]; // Guardar [ID, Name]
+                        } else {
+                            finalValue = [m2oId, `(ID: ${m2oId} - Not Found?)`]; // ID existe pero name_get falló?
+                        }
+                    } catch (nameGetError) {
+                         console.warn(`name_get for ${model} ID ${m2oId} failed:`, nameGetError);
+                         // Falló el name_get, mostrar ID como fallback
+                         finalValue = [m2oId, `(ID: ${m2oId} - Name Error)`];
+                         // Podríamos marcar accessError aquí si el error es de permisos
+                         if (nameGetError.message?.data?.name?.includes('AccessError')) {
+                              updatedFieldData.accessError = true; // Mantener el error si es de acceso
+                              finalValue = `(Access Denied to ${model})`;
+                         }
+                    }
+                } else {
+                     // No había ID enlazado
+                     finalValue = false;
+                }
+    
+                // Actualizar estado final
+                newRecordFields = [...this.state.recordFields];
+                const finalFieldData = { ...newRecordFields[fieldIndex], value: finalValue, isLoading: false, isLoaded: true, accessError: updatedFieldData.accessError }; // Usar accessError actualizado
+                newRecordFields[fieldIndex] = finalFieldData;
+                this.state.recordFields = newRecordFields;
+    
+            } catch (error) {
+                console.error(`Error loading name for ${fieldKey}:`, error);
+                // Actualizar estado con error
+                newRecordFields = [...this.state.recordFields];
+                const errorFieldData = { ...newRecordFields[fieldIndex], value: `(${error.message || 'Error'})`, isLoading: false, isLoaded: true, accessError: true };
+                newRecordFields[fieldIndex] = errorFieldData;
+                this.state.recordFields = newRecordFields;
+                this.notification.add(`Failed to load name for ${fieldKey}.`, { type: 'danger' });
+            }
+        }
+    
+    
+        // AJUSTADO: loadX2ManyCount (sin cambios mayores en su lógica interna, pero asegurar actualización reactiva)
+        async loadX2ManyCount(fieldKey) {
+             const fieldIndex = this.state.recordFields.findIndex(f => f.key === fieldKey);
+             if (fieldIndex === -1) return;
+             const fieldData = this.state.recordFields[fieldIndex];
+    
+             let newRecordFields = [...this.state.recordFields];
+             let updatedFieldData = { ...fieldData, isLoading: true, accessError: false };
+             newRecordFields[fieldIndex] = updatedFieldData;
+             this.state.recordFields = newRecordFields;
+    
+             try {
+                // ... (determinar dominio, llamar search_count) ...
+                const domain = []; // ¡Placeholder!
+                const count = await this.orm.call(fieldData.definition.relation, 'search_count', [domain]);
+    
+                newRecordFields = [...this.state.recordFields];
+                const finalFieldData = { ...newRecordFields[fieldIndex], value: `${count} Records`, isLoading: false, isLoaded: true, accessError: false };
+                newRecordFields[fieldIndex] = finalFieldData;
+                this.state.recordFields = newRecordFields;
+    
+             } catch (error) {
+                console.error(`Error loading count for ${fieldKey}:`, error);
+                newRecordFields = [...this.state.recordFields];
+                const errorFieldData = { ...newRecordFields[fieldIndex], value: `(Error Loading)`, isLoading: false, isLoaded: true, accessError: true };
+                newRecordFields[fieldIndex] = errorFieldData;
+                this.state.recordFields = newRecordFields;
+                // ... (notificación) ...
+             }
+        }    
 
         startEdit(field) {
             // if (field.definition.readonly) {
@@ -456,21 +663,34 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
 
         // Helper para formatear valor mostrado (opcional pero útil)
         getDisplayValue(field) {
-            if (field.value === false && field.definition.type !== 'boolean') return ''; // Mostrar vacío para False excepto booleanos
-            if (field.value === null || field.value === undefined) return '';
-            if (field.definition.type === 'many2one' && Array.isArray(field.value)) {
-                return field.value[1] || `ID: ${field.value[0]}`; // Mostrar nombre o ID
+            // Mostrar mensajes especiales primero
+            if (field.accessError) { return field.value; } // Muestra error (ej. '(Read Error)')
+            if (field.isLoading) { return '(Loading...)'; } // Si está cargando activamente
+            if (!field.isLoaded) {
+                 // Si no está cargado, podría ser relacional esperando click o un campo no leído
+                 return field.status || '(Not loaded)'; // Mostrar status o default
             }
-            if (field.definition.type === 'boolean') {
-                return field.value ? '✔️' : '❌'; // O 'True' / 'False'
+    
+            // Si está cargado y sin error, procesar valor
+            const value = field.value;
+            const def = field.definition;
+    
+            if (value === false && def.type !== 'boolean') return '(empty)'; // Mostrar (empty) explícito para False
+            if (value === null || value === undefined) {
+                 // Si es relacional y está 'cargado' pero es null/undefined, significa que no tiene valor
+                 if (['many2one', 'one2many', 'many2many'].includes(def.type)) return '(empty)';
+                 return ''; // Vacío para otros tipos
             }
-            if (field.definition.type === 'selection' && field.definition.selection) {
-                const match = field.definition.selection.find(opt => opt[0] === field.value);
-                return match ? match[1] : field.value; // Mostrar label de selección
-            }
-            // Añadir formato para fecha/hora si es necesario
-            // if (field.definition.type === 'date') { ... }
-            return String(field.value);
+    
+            // Procesamiento específico (similar a antes)
+            if (def.type === 'many2one' && Array.isArray(value)) { return value[1] || `(ID: ${value[0]})`; }
+            if (['one2many', 'many2many'].includes(def.type)) { return String(value); } // "X Records"
+            if (def.type === 'boolean') { return value ? '✔️' : '❌'; }
+            if (def.type === 'selection' && def.selection) { /* ... */ }
+            if (def.type === 'binary') { return String(value); } // "X KB", "(Binary Data)" etc.
+            if (value === '(Computed Field)' || value === '(Related Field)') return value; // Mantener placeholders
+    
+            return String(value);
         }
 
         runModelMethodOpt() {

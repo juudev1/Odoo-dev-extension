@@ -2,7 +2,7 @@
   position: fixed;
   right: 0;
   top: 0;
-  z-index: 10;
+  z-index: 19;
   width: 350px;
   /* Ancho reducido */
   background-color: #fff;
@@ -535,4 +535,65 @@ textarea.code-input {
 }
 .xpath-popover-content .copy-xml-btn i {
   font-size: 0.9em; /* Icono ligeramente más pequeño */
+}
+
+/* Field Error */
+
+.record-field-item.has-access-error {
+  opacity: 0.7; /* Atenuar visualmente */
+  /* background-color: #fff5f5; /* Fondo rojo muy claro (opcional) */
+}
+
+.access-error-icon {
+  /* text-danger ya le da color rojo */
+  cursor: help;
+}
+
+/* Asegurarse de que el valor también refleje el error */
+.has-access-error .field-value {
+  color: #dc3545; /* Color rojo */
+  font-style: italic;
+}
+
+/* Estilo para el botón deshabilitado */
+.field-actions .edit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #6c757d; /* Resetear color hover */
+}
+.field-actions .edit-btn:disabled:hover {
+  color: #6c757d; /* Mantener color gris en hover */
+}
+
+.refresh-x2m-btn {
+  color: #0d6efd; /* Color azul o el que prefieras */
+  opacity: 0.7;
+}
+.refresh-x2m-btn:hover {
+  opacity: 1;
+}
+.refresh-x2m-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Ajustar valor no cargado (opcional) */
+.field-value-line .field-value:not(:empty):first-child:last-child {
+  /* Estilo si es el único valor y no está vacío */
+}
+.field-value-line span:only-child:not(.empty-value) {
+  /* Podría necesitar ajustes si el "(Not loaded)" se ve mal */
+}
+
+
+.refresh-relation-btn {
+  color: #0d6efd; /* O el color que prefieras */
+  opacity: 0.7;
+}
+.refresh-relation-btn:hover {
+  opacity: 1;
+}
+.refresh-relation-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

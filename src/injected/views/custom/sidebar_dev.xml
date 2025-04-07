@@ -50,16 +50,27 @@
                         <div class="dev-sidebar-output">
                             <t t-if="state.recordFields.length">
                                 <h4>Record Values</h4>
-                                <t t-foreach="state.recordFields"
-                                   t-as="field"
-                                   t-key="field.key">
-                                    <div class="dev-sidebar-item record-field-item">
+                                <t t-foreach="state.recordFields" t-as="field" t-key="field.key">
+                                    <div class.="dev-sidebar-item record-field-item"
+                                        t-att-class="{
+                                            'has-access-error': field.accessError,
+                                            'is-computed': field.definition.compute,
+                                            'is-related': field.definition.related,
+                                            'is-readonly': field.definition.readonly
+                                        }">
 
                                         <!-- MODO VISTA -->
                                         <div t-if="state.editingFieldKey !== field.key" class="field-display-mode">
                                             <!-- Línea Superior: Etiqueta y Acciones -->
                                             <div class="field-top-line">
                                                 <div class="field-label-container">
+                                                 <!-- Icono Error Acceso (prioridad sobre readonly) -->
+                                                    <span t-if="field.accessError"
+                                                        class="access-error-icon me-1 text-danger"
+                                                        title="Access Denied">
+                                                        <i class="fa fa-ban"/>
+                                                    </span>
+                                                    
                                                     <span t-if="field.definition.readonly"
                                                         class="readonly-indicator-icon me-1"
                                                         title="Readonly in Odoo (edit attempt may fail)">
@@ -67,22 +78,44 @@
                                                     </span>
                                                     <strong t-att-title="'Technical Name: ' + field.key"
                                                             t-esc="field.definition.string || field.key" />
+
+                                                    <span t-if="field.definition.compute &amp;&amp; !field.accessError" class="field-type-indicator ms-1" title="Computed Field"><i class="fa fa-cogs"/></span>
+                                                    <span t-if="field.definition.related &amp;&amp; !field.accessError" class="field-type-indicator ms-1" title="Related Field"><i class="fa fa-link"/></span>
                                                 </div>
-                                                <div class="field-actions">
-                                                    <button class="btn btn-sm btn-link p-0 field-action-btn edit-btn"
-                                                            title="Edit field"
-                                                            t-on-click="() => startEdit(field)">
-                                                        <i class="fa fa-pencil"/>
-                                                    </button>
-                                                    <FieldXpath record="props.record" fieldName="field.key" />
+                                                    <div class="field-actions">
+                                                       <!-- Botón Refrescar (Solo relacionales NO cargados Y sin error) -->
+                                                        <button t-if="['many2one', 'one2many', 'many2many'].includes(field.definition.type) &amp;&amp; !field.isLoaded &amp;&amp; !field.accessError"
+                                                                class="btn btn-sm btn-link p-0 field-action-btn refresh-relation-btn"
+                                                                t-att-disabled="field.isLoading"
+                                                                t-on-click.prevent.stop="field.definition.type === 'many2one' ? () => loadMany2oneName(field.key) : () => loadX2ManyCount(field.key)"
+                                                                t-att-title="field.definition.type === 'many2one' ? 'Load name' : 'Load record count'">
+                                                            <i t-if="!field.isLoading" class="fa fa-refresh"/>
+                                                            <i t-if="field.isLoading" class="fa fa-spinner fa-spin"/>
+                                                        </button>
+                                                        <!-- Botón Editar (Deshabilitado si: x2m, compute, related, error, o readonly original) -->
+                                                        <button class="btn btn-sm btn-link p-0 field-action-btn edit-btn"
+                                                                t-att-disabled="field.accessError or field.definition.compute or field.definition.related or ['one2many', 'many2many', 'binary'].includes(field.definition.type)"
+                                                                t-att-title="
+                                                                    field.accessError ? 'Cannot edit (Access Denied/Read Error)' :
+                                                                    field.definition.compute ? 'Cannot edit (Computed)' :
+                                                                    field.definition.related ? 'Cannot edit (Related)' :
+                                                                    ['one2many', 'many2many'].includes(field.definition.type) ? 'Cannot edit (x2m)' :
+                                                                    field.definition.type === 'binary' ? 'Cannot edit (Binary)' :
+                                                                    field.definition.readonly ? 'Edit field (Readonly)' : 'Edit field'
+                                                                "
+                                                                t-on-click="() => startEdit(field)">
+                                                            <i class="fa fa-pencil"/>
+                                                        </button>
+                                                        <FieldXpath record="props.record" fieldName="field.key" />
                                                 </div>
                                             </div>
                                             <span class="technical-field-name"> (<t t-esc="field.key"/>)</span>
                                             <!-- Línea Inferior: Valor -->
-                                            <div class="field-value-line">
-                                                <span class="field-value" t-esc="getDisplayValue(field)"/>
-                                                <!-- Si el valor está vacío, podemos mostrar algo o dejarlo vacío -->
-                                                <span class="field-value empty-value" t-if="!getDisplayValue(field) &amp;&amp; getDisplayValue(field) !== 0">(empty)</span>
+                                           <div class="field-value-line">
+                                                <!-- Mostrar valor (getDisplayValue maneja placeholders/loading) -->
+                                                <span class="field-value" t-att-class="{'text-muted fst-italic': !field.isLoaded || field.value === '(Computed Field)' || field.value === '(Related Field)'}" t-esc="getDisplayValue(field)"/>
+                                                <!-- Mostrar (empty) solo si está cargado, sin error y es realmente vacío -->
+                                                <span class="field-value empty-value" t-if="field.isLoaded &amp;&amp; !field.accessError &amp;&amp; !getDisplayValue(field) &amp;&amp; getDisplayValue(field) !== 0 ">(empty)</span>
                                             </div>
                                         </div>
                                         

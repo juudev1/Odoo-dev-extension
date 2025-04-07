@@ -207,6 +207,7 @@ odoo.define('odoo_dev.components.field_xpath', ['@odoo/owl', '@web/core/utils/ho
         fieldName: { type: String },
         copyFn: { type: Function },
         closeFn: { type: Function },
+        close: { type: Function, optional: true }, 
     };
 
     FieldXpath.components = { XPathPopoverContent }; 

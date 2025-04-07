@@ -31,7 +31,7 @@ window.ExtensionCore = ExtensionCore;
     }
 
     // si la url contiene "/web" pero no subrutas como "/web/login" o "/web/signup"
-    const isWebModule = window.location.pathname.includes('/web') && !window.location.pathname.includes('/web/login') && !window.location.pathname.includes('/web/signup');
+    var isWebModule = (window.location.pathname.includes('/web') && !window.location.pathname.includes('/web/login') && !window.location.pathname.includes('/web/signup')) || window.location.pathname.includes('/odoo');
     const hasFileLoaded = document.querySelector('input[type="file"]') !== null; 
 
     // Si la URL contiene "/web" o hay un archivo cargado, inyectamos los módulos
