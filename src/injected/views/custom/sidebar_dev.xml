@@ -1,13 +1,21 @@
 <templates>
     <t t-name="odoo_dev.SideBar"
-       owl="1">
+        owl="1">
         <div class="col-3 dev-sidebar"
-             t-if="state.isVisible">
+            t-if="state.isVisible">
             <div class="dev-sidebar-header">
                 <h4>Odoo Dev Tools</h4>
                 <button id="close"
-                        t-on-click="closeSideBar">close</button>
+                    t-on-click="closeSideBar">close</button>
             </div>
+
+            <!-- Nuevo botón para volver al formulario -->
+            <button t-if="!state.isFormView and activeRecordService.getMainFormContext()"
+                class="btn btn-sm btn-outline-secondary mb-2"
+                t-on-click="revertToMainFormContext"
+                title="Revert to Main Form Context">
+                <i class="fa fa-reply" /> Back to Form </button>
+
             <!-- info current db / model / id -->
             <div class="mt-4 mb-2 dev-sidebar-info-section">
                 <h5 class="dev-sidebar-info-title">Context</h5>
@@ -15,87 +23,94 @@
                     <li>
                         <span class="dev-info-label">Database:</span>
                         <span class="dev-info-value"
-                              t-esc="database" />
+                            t-esc="database" />
                     </li>
                     <li>
                         <span class="dev-info-label">Model:</span>
                         <span class="dev-info-value"
-                              t-esc="currentModel" />
+                            t-esc="state.currentModel" />
                     </li>
-                    <li t-if="currentRecordId">
+                    <li t-if="state.currentRecordId">
                         <span class="dev-info-label">Record ID:</span>
                         <span class="dev-info-value"
-                              t-esc="currentRecordId" />
+                            t-esc="state.currentRecordId" />
                     </li>
                 </ul>
             </div>
 
             <div class="dev-sidebar-options">
                 <button class="dev-sidebar-option"
-                        t-on-click="getRecordValues">
-                    <i class="fa fa-refresh me-2" />
-                        Get Record Values
-                    </button>
-                    <button class="dev-sidebar-option"
-                            t-on-click="getReports">
-                        <i class="fa fa-file-pdf-o me-2" />
-                            Get Reports
-                        </button>
-                        <button class="dev-sidebar-option"
-                                t-on-click="runModelMethodOpt">
-                            <i class="fa fa-code me-2" />
-                                Run Model Method
-                            </button>
-                        </div>
-                        <div class="dev-sidebar-output">
-                            <t t-if="state.recordFields.length">
-                                <h4>Record Values</h4>
-                                <t t-foreach="state.recordFields" t-as="field" t-key="field.key">
-                                    <div class.="dev-sidebar-item record-field-item"
-                                        t-att-class="{
+                    t-on-click="getRecordValues">
+                    <i class="fa fa-refresh me-2" /> Get Record Values </button>
+                <button class="dev-sidebar-option"
+                    t-on-click="getReports">
+                    <i class="fa fa-file-pdf-o me-2" /> Get Reports </button>
+                <button class="dev-sidebar-option"
+                    t-on-click="runModelMethodOpt">
+                    <i class="fa fa-code me-2" /> Run Model Method </button>
+            </div>
+            <div class="dev-sidebar-output">
+                <t t-if="state.recordFields.length">
+                    <h4>Record Values</h4>
+                    <t t-foreach="state.recordFields" t-as="field" t-key="field.key">
+                        <div class.="dev-sidebar-item record-field-item"
+                            t-att-class="{
                                             'has-access-error': field.accessError,
                                             'is-computed': field.definition.compute,
                                             'is-related': field.definition.related,
                                             'is-readonly': field.definition.readonly
                                         }">
 
-                                        <!-- MODO VISTA -->
-                                        <div t-if="state.editingFieldKey !== field.key" class="field-display-mode">
-                                            <!-- Línea Superior: Etiqueta y Acciones -->
-                                            <div class="field-top-line">
-                                                <div class="field-label-container">
-                                                 <!-- Icono Error Acceso (prioridad sobre readonly) -->
-                                                    <span t-if="field.accessError"
-                                                        class="access-error-icon me-1 text-danger"
-                                                        title="Access Denied">
-                                                        <i class="fa fa-ban"/>
-                                                    </span>
-                                                    
-                                                    <span t-if="field.definition.readonly"
-                                                        class="readonly-indicator-icon me-1"
-                                                        title="Readonly in Odoo (edit attempt may fail)">
-                                                        <i class="fa fa-eye"/>
-                                                    </span>
-                                                    <strong t-att-title="'Technical Name: ' + field.key"
-                                                            t-esc="field.definition.string || field.key" />
+                            <!-- MODO VISTA -->
+                            <div t-if="state.editingFieldKey !== field.key"
+                                class="field-display-mode">
+                                <!-- Línea Superior: Etiqueta y Acciones -->
+                                <div class="field-top-line">
+                                    <div class="field-label-container">
+                                        <!-- Icono Error Acceso (prioridad sobre readonly) -->
+                                        <span t-if="field.accessError"
+                                            class="access-error-icon me-1 text-danger"
+                                            title="Access Denied">
+                                            <i class="fa fa-ban" />
+                                        </span>
 
-                                                    <span t-if="field.definition.compute &amp;&amp; !field.accessError" class="field-type-indicator ms-1" title="Computed Field"><i class="fa fa-cogs"/></span>
-                                                    <span t-if="field.definition.related &amp;&amp; !field.accessError" class="field-type-indicator ms-1" title="Related Field"><i class="fa fa-link"/></span>
-                                                </div>
-                                                    <div class="field-actions">
-                                                       <!-- Botón Refrescar (Solo relacionales NO cargados Y sin error) -->
-                                                        <button t-if="['many2one', 'one2many', 'many2many'].includes(field.definition.type) &amp;&amp; !field.isLoaded &amp;&amp; !field.accessError"
-                                                                class="btn btn-sm btn-link p-0 field-action-btn refresh-relation-btn"
-                                                                t-att-disabled="field.isLoading"
-                                                                t-on-click.prevent.stop="field.definition.type === 'many2one' ? () => loadMany2oneName(field.key) : () => loadX2ManyCount(field.key)"
-                                                                t-att-title="field.definition.type === 'many2one' ? 'Load name' : 'Load record count'">
-                                                            <i t-if="!field.isLoading" class="fa fa-refresh"/>
-                                                            <i t-if="field.isLoading" class="fa fa-spinner fa-spin"/>
-                                                        </button>
-                                                        <!-- Botón Editar (Deshabilitado si: x2m, compute, related, error, o readonly original) -->
-                                                        <button class="btn btn-sm btn-link p-0 field-action-btn edit-btn"
-                                                                t-att-disabled="field.accessError or field.definition.compute or field.definition.related or ['one2many', 'many2many', 'binary'].includes(field.definition.type)"
-                                                                t-att-title="
+                                        <span t-if="field.definition.readonly"
+                                            class="readonly-indicator-icon me-1"
+                                            title="Readonly in Odoo (edit attempt may fail)">
+                                            <i class="fa fa-eye" />
+                                        </span>
+                                        <strong t-att-title="'Technical Name: ' + field.key"
+                                            t-esc="field.definition.string || field.key" />
+
+                                        <span
+                                            t-if="field.definition.compute &amp;&amp; !field.accessError"
+                                            class="field-type-indicator ms-1" title="Computed Field">
+                                            <i class="fa fa-cogs" />
+                                        </span>
+                                        <span
+                                            t-if="field.definition.related &amp;&amp; !field.accessError"
+                                            class="field-type-indicator ms-1" title="Related Field">
+                                            <i class="fa fa-link" />
+                                        </span>
+                                    </div>
+                                    <div class="field-actions">
+                                        <!-- Botón Refrescar (Solo relacionales NO cargados Y sin
+                                        error) -->
+                                        <button
+                                            t-if="['many2one', 'one2many', 'many2many'].includes(field.definition.type) &amp;&amp; !field.isLoaded &amp;&amp; !field.accessError"
+                                            class="btn btn-sm btn-link p-0 field-action-btn refresh-relation-btn"
+                                            t-att-disabled="field.isLoading"
+                                            t-on-click.prevent.stop="field.definition.type === 'many2one' ? () => loadMany2oneName(field.key) : () => loadX2ManyCount(field.key)"
+                                            t-att-title="field.definition.type === 'many2one' ? 'Load name' : 'Load record count'">
+                                            <i t-if="!field.isLoading" class="fa fa-refresh" />
+                                            <i t-if="field.isLoading" class="fa fa-spinner fa-spin" />
+                                        </button>
+                                        <!-- Botón Editar (Deshabilitado si: x2m, compute, related,
+                                        error, o readonly original) -->
+                                        <button
+                                            class="btn btn-sm btn-link p-0 field-action-btn edit-btn"
+                                            t-att-disabled="field.accessError or field.definition.compute or field.definition.related or ['one2many', 'many2many', 'binary'].includes(field.definition.type)"
+                                            t-att-title="
                                                                     field.accessError ? 'Cannot edit (Access Denied/Read Error)' :
                                                                     field.definition.compute ? 'Cannot edit (Computed)' :
                                                                     field.definition.related ? 'Cannot edit (Related)' :
@@ -103,227 +118,239 @@
                                                                     field.definition.type === 'binary' ? 'Cannot edit (Binary)' :
                                                                     field.definition.readonly ? 'Edit field (Readonly)' : 'Edit field'
                                                                 "
-                                                                t-on-click="() => startEdit(field)">
-                                                            <i class="fa fa-pencil"/>
-                                                        </button>
-                                                        <FieldXpath record="props.record" fieldName="field.key" />
-                                                </div>
-                                            </div>
-                                            <span class="technical-field-name"> (<t t-esc="field.key"/>)</span>
-                                            <!-- Línea Inferior: Valor -->
-                                           <div class="field-value-line">
-                                                <!-- Mostrar valor (getDisplayValue maneja placeholders/loading) -->
-                                                <span class="field-value" t-att-class="{'text-muted fst-italic': !field.isLoaded || field.value === '(Computed Field)' || field.value === '(Related Field)'}" t-esc="getDisplayValue(field)"/>
-                                                <!-- Mostrar (empty) solo si está cargado, sin error y es realmente vacío -->
-                                                <span class="field-value empty-value" t-if="field.isLoaded &amp;&amp; !field.accessError &amp;&amp; !getDisplayValue(field) &amp;&amp; getDisplayValue(field) !== 0 ">(empty)</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- MODO EDICIÓN -->
-                                        <div t-if="state.editingFieldKey === field.key"
-                                             class="field-edit-mode">
-                                            <label t-att-for="'edit-' + field.key" class="form-label fw-bold">
-                                                <t t-esc="field.definition.string || field.key"/>
-                                                <span class="technical-field-name"> (<t t-esc="field.key"/>)</span>
-                                            </label>
-                                            <!-- Input dinámico según el tipo -->
-                                            <t t-set="fieldType"
-                                               t-value="field.definition.type" />
-                                            <!-- Char, Text, HTML (simplificado como text) -->
-                                            <input t-if="['char', 'text', 'html'].includes(fieldType)"
-                                                   type="text"
-                                                   class="form-control form-control-sm edit-input"
-                                                   t-att-id="'edit-' + field.key"
-                                                   t-model="state.editingFieldValue"
-                                                   t-ref="editInputRef" />
-                                            <!-- Integer, Float, Monetary -->
-                                            <input t-if="['integer', 'float', 'monetary'].includes(fieldType)"
-                                                   type="number"
-                                                   class="form-control form-control-sm edit-input"
-                                                   t-att-id="'edit-' + field.key"
-                                                   t-att-step="['float', 'monetary'].includes(fieldType) ? 'any' : '1'"
-                                                   t-model="state.editingFieldValue"
-                                                   t-ref="editInputRef" />
-                                            <!-- Boolean -->
-                                            <input t-if="fieldType === 'boolean'"
-                                                   type="checkbox"
-                                                   class="form-check-input edit-input ms-2"
-                                                   t-att-id="'edit-' + field.key"
-                                                   t-model="state.editingFieldValue"
-                                                   t-ref="editInputRef" />
-                                            <!-- Many2one (simplificado como ID) -->
-                                            <input t-if="fieldType === 'many2one'"
-                                                   type="number"
-                                                   class="form-control form-control-sm edit-input"
-                                                   placeholder="Enter ID (or empty to clear)"
-                                                   t-att-id="'edit-' + field.key"
-                                                   t-model="state.editingFieldValue"
-                                                   t-ref="editInputRef" />
-                                            <!-- Date -->
-                                            <input t-if="fieldType === 'date'"
-                                                   type="date"
-                                                   class="form-control form-control-sm edit-input"
-                                                   t-att-id="'edit-' + field.key"
-                                                   t-model="state.editingFieldValue"
-                                                   t-ref="editInputRef" />
-                                            <!-- Datetime -->
-                                            <input t-if="fieldType === 'datetime'"
-                                                   type="datetime-local"
-                                                   class="form-control form-control-sm edit-input"
-                                                   t-att-id="'edit-' + field.key"
-                                                   t-model="state.editingFieldValue"
-                                                   t-ref="editInputRef" />
-                                            <!-- Selection -->
-                                            <select t-if="fieldType === 'selection' &amp;&amp; field.definition.selection"
-                                                    class="form-select form-select-sm edit-input"
-                                                    t-att-id="'edit-' + field.key"
-                                                    t-model="state.editingFieldValue"
-                                                    t-ref="editInputRef">
-                                                <option t-if="!field.definition.required"
-                                                        value="">-- Select --</option>
-                                                <t t-foreach="field.definition.selection"
-                                                   t-as="option"
-                                                   t-key="option[0]">
-                                                    <option t-att-value="option[0]"
-                                                            t-esc="option[1]" />
-                                                </t>
-                                            </select>
-                                            <!-- Botones Guardar / Cancelar -->
-                                            <div class="edit-actions mt-1">
-                                                <button class="btn btn-sm btn-primary me-1"
-                                                        t-on-click="saveEdit"
-                                                        t-att-disabled="state.isSavingEdit">
-                                                    <i t-if="!state.isSavingEdit"
-                                                       class="fa fa-check" />
-                                                    <i t-if="state.isSavingEdit"
-                                                       class="fa fa-spinner fa-spin" />                                                        
-                                                        Save
-                                                    </button>
-                                                    <button class="btn btn-sm btn-secondary"
-                                                            t-on-click="cancelEdit">
-                                                        <i class="fa fa-times" />
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </t>
-                                    </t>
-                                    <t t-if="state.reports.length">
-                                        <h4>Reports</h4>
-                                        <t t-foreach="state.reports"
-                                           t-as="report"
-                                           t-key="report.id">
-                                            <div class="dev-sidebar-item">
-                                                <a t-att-href="report.url"
-                                                   target="_blank">
-                                                    <strong t-esc="report.name" />
-                                                </a>
-                                            </div>
-                                        </t>
-                                    </t>
-                                    <t t-if="state.showRunModelMethod">
-                                        <div class="form-group run-model-method-section mt-3">
-                                            <h4>Run Model Method</h4>
-                                            <!-- Inputs con t-model y t-on-input -->
-                                            <div class="mb-2">
-                                                <label for="methodNameInput" class="form-label form-label-sm">Method Name:</label>
-                                                <input class="form-control form-control-sm" type="text" id="methodNameInput"
-                                                    t-ref="methodNameInput"
-                                                    t-model="state.modelMethodName"
-                                                    t-on-input="updateModelMethodPreview"
-                                                    placeholder="e.g., action_confirm"/>
-                                            </div>
-                                            <div class="mb-2">
-                                                <label for="methodArgsInput" class="form-label form-label-sm">Positional Arguments (JSON Array):</label>
-                                                <textarea class="form-control form-control-sm code-input" rows="3" id="methodArgsInput"
-                                                        t-ref="methodArgsInput"
-                                                        t-model="state.modelMethodArgs"
-                                                        t-on-input="updateModelMethodPreview"
-                                                        placeholder='e.g., ["arg1", {"key": "val"}]'></textarea>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="methodKwargsInput" class="form-label form-label-sm">Keyword Arguments (JSON Object):</label>
-                                                <textarea class="form-control form-control-sm code-input" rows="3" id="methodKwargsInput"
-                                                        t-ref="methodKwargsInput"
-                                                        t-model="state.modelMethodKwargs"
-                                                        t-on-input="updateModelMethodPreview"
-                                                        placeholder='e.g., {"context": {"lang": "es_ES"}}'></textarea>
-                                            </div>
-
-                                            <!-- *** Vista Previa de la Llamada *** -->
-                                            <div class="orm-call-preview mb-3" t-if="state.modelMethodPreview">
-                                                <div class="preview-header">
-                                                    <h6>ORM Call Preview</h6>
-                                                    <button class="btn btn-sm btn-secondary copy-preview-btn"
-                                                            title="Copy preview"
-                                                            t-on-click="copyModelMethodPreview">
-                                                        <i class="fa fa-copy"/> Copy
-                                                    </button>
-                                                </div>
-                                                <!-- Usar <pre> para mantener formato -->
-                                                <pre class="code-preview"><t t-esc="state.modelMethodPreview"/></pre>
-                                            </div>
-                                            <!-- *** Fin Vista Previa *** -->
-
-                                            <!-- Botón Run con indicador de carga -->
-                                            <button class="btn btn-primary w-100 dev-sidebar-btn-run-method"
-                                                    t-on-click="runModelMethod"
-                                                    t-att-disabled="state.isModelMethodRunning">
-                                                <t t-if="!state.isModelMethodRunning">
-                                                    <i class="fa fa-play me-1"/> Run Method
-                                                </t>
-                                                <t t-if="state.isModelMethodRunning">
-                                                    <i class="fa fa-spinner fa-spin me-1"/> Running...
-                                                </t>
-                                            </button>
-                                        </div>
-                                         <!-- *** Salida del Método *** -->
-                                        <div class="model-method-output mt-3" t-if="state.modelMethodOutput !== null">
-                                            <h6>Output:</h6>
-                                            <pre t-ref="outputPre" t-att-class="{ 'output-error': state.modelMethodOutputIsError, 'output-success': !state.modelMethodOutputIsError }"><code class="language-json"><t t-esc="state.modelMethodOutput"/></code></pre>
-                                        </div>
-
-                                        <!-- *** Sección de Historial *** -->
-                                        <div class="run-method-history mt-3 mb-3">
-                                            <div class="history-header">
-                                                <h6>History <span class="badge bg-secondary rounded-pill" t-esc="state.runMethodHistory.length"/></h6>
-                                                <button t-if="state.runMethodHistory.length > 0"
-                                                        class="btn btn-sm btn-link p-0 clear-history-btn"
-                                                        title="Clear history"
-                                                        t-on-click="clearRunMethodHistory">
-                                                    <i class="fa fa-trash-o"/> Clear
-                                                </button>
-                                            </div>
-                                            <ul class="list-group history-list" t-ref="historyListRef">
-                                                <t t-if="state.runMethodHistory.length === 0">
-                                                    <li class="list-group-item text-muted history-empty">No history yet.</li>
-                                                </t>
-                                                <t t-foreach="state.runMethodHistory" t-as="histItem" t-key="histItem.timestamp">
-                                                    <!-- Hacer cada item clickeable -->
-                                                    <li class="list-group-item list-group-item-action history-item"
-                                                        t-on-click="() => applyHistoryItem(histItem)"
-                                                        t-att-title="'Click to apply\nArgs: ' + histItem.args + '\nKwargs: ' + histItem.kwargs">
-                                                        <div class="history-item-line1">
-                                                            <span class="history-model"><t t-esc="histItem.model"/></span>.<span class="history-method fw-bold"><t t-esc="histItem.method"/></span>
-                                                        </div>
-                                                        <div class="history-item-line2">
-                                                            <code class="history-args" t-esc="histItem.args"/>
-                                                            <code class="history-kwargs" t-esc="histItem.kwargs"/>
-                                                        </div>
-                                                    </li>
-                                                </t>
-                                            </ul>
-                                        </div>
-                                        <!-- *** Fin Sección de Historial *** -->
-
-                                    </t>
+                                            t-on-click="() => startEdit(field)">
+                                            <i class="fa fa-pencil" />
+                                        </button>
+                                        <FieldXpath record="props.record" fieldName="field.key" />
+                                    </div>
+                                </div>
+                                <span class="technical-field-name"> (<t t-esc="field.key" />)</span>
+                                <!-- Línea Inferior: Valor -->
+                                <div class="field-value-line">
+                                    <!-- Mostrar valor (getDisplayValue maneja placeholders/loading) -->
+                                    <span class="field-value"
+                                        t-att-class="{'text-muted fst-italic': !field.isLoaded || field.value === '(Computed Field)' || field.value === '(Related Field)'}"
+                                        t-esc="getDisplayValue(field)" />
+                                    <!-- Mostrar (empty) solo si está cargado, sin error y es
+                                    realmente vacío -->
+                                    <span class="field-value empty-value"
+                                        t-if="field.isLoaded &amp;&amp; !field.accessError &amp;&amp; !getDisplayValue(field) &amp;&amp; getDisplayValue(field) !== 0 ">
+                                        (empty)</span>
                                 </div>
                             </div>
-                            <div class="floating-button"
-                                 t-if="!state.isVisible || !isInModal"
-                                 t-on-click="toggleSideBar">
-                                <i class="fa fa-bug" />
+
+                            <!-- MODO EDICIÓN -->
+                            <div t-if="state.editingFieldKey === field.key"
+                                class="field-edit-mode">
+                                <label t-att-for="'edit-' + field.key" class="form-label fw-bold">
+                                    <t t-esc="field.definition.string || field.key" />
+                                    <span class="technical-field-name"> (<t t-esc="field.key" />)</span>
+                                </label>
+                                <!-- Input dinámico según el tipo -->
+                                <t t-set="fieldType"
+                                    t-value="field.definition.type" />
+                                <!-- Char, Text, HTML (simplificado como text) -->
+                                <input t-if="['char', 'text', 'html'].includes(fieldType)"
+                                    type="text"
+                                    class="form-control form-control-sm edit-input"
+                                    t-att-id="'edit-' + field.key"
+                                    t-model="state.editingFieldValue"
+                                    t-ref="editInputRef" />
+                                <!-- Integer, Float, Monetary -->
+                                <input t-if="['integer', 'float', 'monetary'].includes(fieldType)"
+                                    type="number"
+                                    class="form-control form-control-sm edit-input"
+                                    t-att-id="'edit-' + field.key"
+                                    t-att-step="['float', 'monetary'].includes(fieldType) ? 'any' : '1'"
+                                    t-model="state.editingFieldValue"
+                                    t-ref="editInputRef" />
+                                <!-- Boolean -->
+                                <input t-if="fieldType === 'boolean'"
+                                    type="checkbox"
+                                    class="form-check-input edit-input ms-2"
+                                    t-att-id="'edit-' + field.key"
+                                    t-model="state.editingFieldValue"
+                                    t-ref="editInputRef" />
+                                <!-- Many2one (simplificado como ID) -->
+                                <input t-if="fieldType === 'many2one'"
+                                    type="number"
+                                    class="form-control form-control-sm edit-input"
+                                    placeholder="Enter ID (or empty to clear)"
+                                    t-att-id="'edit-' + field.key"
+                                    t-model="state.editingFieldValue"
+                                    t-ref="editInputRef" />
+                                <!-- Date -->
+                                <input t-if="fieldType === 'date'"
+                                    type="date"
+                                    class="form-control form-control-sm edit-input"
+                                    t-att-id="'edit-' + field.key"
+                                    t-model="state.editingFieldValue"
+                                    t-ref="editInputRef" />
+                                <!-- Datetime -->
+                                <input t-if="fieldType === 'datetime'"
+                                    type="datetime-local"
+                                    class="form-control form-control-sm edit-input"
+                                    t-att-id="'edit-' + field.key"
+                                    t-model="state.editingFieldValue"
+                                    t-ref="editInputRef" />
+                                <!-- Selection -->
+                                <select
+                                    t-if="fieldType === 'selection' &amp;&amp; field.definition.selection"
+                                    class="form-select form-select-sm edit-input"
+                                    t-att-id="'edit-' + field.key"
+                                    t-model="state.editingFieldValue"
+                                    t-ref="editInputRef">
+                                    <option t-if="!field.definition.required"
+                                        value="">-- Select --</option>
+                                    <t t-foreach="field.definition.selection"
+                                        t-as="option"
+                                        t-key="option[0]">
+                                        <option t-att-value="option[0]"
+                                            t-esc="option[1]" />
+                                    </t>
+                                </select>
+                                <!-- Botones Guardar / Cancelar -->
+                                <div class="edit-actions mt-1">
+                                    <button class="btn btn-sm btn-primary me-1"
+                                        t-on-click="saveEdit"
+                                        t-att-disabled="state.isSavingEdit">
+                                        <i t-if="!state.isSavingEdit"
+                                            class="fa fa-check" />
+                                                    <i t-if="state.isSavingEdit"
+                                            class="fa fa-spinner fa-spin" /> Save </button>
+                                    <button class="btn btn-sm btn-secondary"
+                                        t-on-click="cancelEdit">
+                                        <i class="fa fa-times" /> Cancel </button>
+                                </div>
                             </div>
-                        </t>
-                    </templates>
+                        </div>
+                    </t>
+                </t>
+                <t t-if="state.reports.length">
+                    <h4>Reports</h4>
+                    <t t-foreach="state.reports"
+                        t-as="report"
+                        t-key="report.id">
+                        <div class="dev-sidebar-item">
+                            <a t-att-href="report.url"
+                                target="_blank">
+                                <strong t-esc="report.name" />
+                            </a>
+                        </div>
+                    </t>
+                </t>
+                <t t-if="state.showRunModelMethod">
+                    <div class="form-group run-model-method-section mt-3">
+                        <h4>Run Model Method</h4>
+                        <!-- Inputs con t-model y t-on-input -->
+                        <div class="mb-2">
+                            <label for="methodNameInput" class="form-label form-label-sm">Method
+                                Name:</label>
+                            <input class="form-control form-control-sm" type="text"
+                                id="methodNameInput"
+                                t-ref="methodNameInput"
+                                t-model="state.modelMethodName"
+                                t-on-input="updateModelMethodPreview"
+                                placeholder="e.g., action_confirm" />
+                        </div>
+                        <div class="mb-2">
+                            <label for="methodArgsInput" class="form-label form-label-sm">Positional
+                                Arguments (JSON Array):</label>
+                            <textarea class="form-control form-control-sm code-input" rows="3"
+                                id="methodArgsInput"
+                                t-ref="methodArgsInput"
+                                t-model="state.modelMethodArgs"
+                                t-on-input="updateModelMethodPreview"
+                                placeholder='e.g., ["arg1", {"key": "val"}]'></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="methodKwargsInput" class="form-label form-label-sm">Keyword
+                                Arguments (JSON Object):</label>
+                            <textarea class="form-control form-control-sm code-input" rows="3"
+                                id="methodKwargsInput"
+                                t-ref="methodKwargsInput"
+                                t-model="state.modelMethodKwargs"
+                                t-on-input="updateModelMethodPreview"
+                                placeholder='e.g., {"context": {"lang": "es_ES"}}'></textarea>
+                        </div>
+
+                        <!-- *** Vista Previa de la Llamada *** -->
+                        <div class="orm-call-preview mb-3" t-if="state.modelMethodPreview">
+                            <div class="preview-header">
+                                <h6>ORM Call Preview</h6>
+                                <button class="btn btn-sm btn-secondary copy-preview-btn"
+                                    title="Copy preview"
+                                    t-on-click="copyModelMethodPreview">
+                                    <i class="fa fa-copy" /> Copy </button>
+                            </div>
+                            <!-- Usar <pre> para mantener formato -->
+                            <pre class="code-preview"><t t-esc="state.modelMethodPreview"/></pre>
+                        </div>
+                        <!-- *** Fin Vista Previa *** -->
+
+                        <!-- Botón Run con indicador de carga -->
+                        <button class="btn btn-primary w-100 dev-sidebar-btn-run-method"
+                            t-on-click="runModelMethod"
+                            t-att-disabled="state.isModelMethodRunning">
+                            <t t-if="!state.isModelMethodRunning">
+                                <i class="fa fa-play me-1" /> Run Method </t>
+                            <t t-if="state.isModelMethodRunning">
+                                <i class="fa fa-spinner fa-spin me-1" /> Running... </t>
+                        </button>
+                    </div>
+                    <!-- *** Salida del Método *** -->
+                    <div class="model-method-output mt-3" t-if="state.modelMethodOutput !== null">
+                        <h6>Output:</h6>
+                        <pre t-ref="outputPre"
+                            t-att-class="{ 'output-error': state.modelMethodOutputIsError, 'output-success': !state.modelMethodOutputIsError }"><code class="language-json"><t t-esc="state.modelMethodOutput"/></code></pre>
+                    </div>
+
+                    <!-- *** Sección de Historial *** -->
+                    <div class="run-method-history mt-3 mb-3">
+                        <div class="history-header">
+                            <h6>History <span class="badge bg-secondary rounded-pill"
+                                    t-esc="state.runMethodHistory.length" /></h6>
+                            <button t-if="state.runMethodHistory.length > 0"
+                                class="btn btn-sm btn-link p-0 clear-history-btn"
+                                title="Clear history"
+                                t-on-click="clearRunMethodHistory">
+                                <i class="fa fa-trash-o" /> Clear </button>
+                        </div>
+                        <ul class="list-group history-list" t-ref="historyListRef">
+                            <t t-if="state.runMethodHistory.length === 0">
+                                <li class="list-group-item text-muted history-empty">No history yet.</li>
+                            </t>
+                            <t t-foreach="state.runMethodHistory" t-as="histItem"
+                                t-key="histItem.timestamp">
+                                <!-- Hacer cada item clickeable -->
+                                <li class="list-group-item list-group-item-action history-item"
+                                    t-on-click="() => applyHistoryItem(histItem)"
+                                    t-att-title="'Click to apply\nArgs: ' + histItem.args + '\nKwargs: ' + histItem.kwargs">
+                                    <div class="history-item-line1">
+                                        <span class="history-model">
+                                            <t t-esc="histItem.model" />
+                                        </span>
+                                        .<span class="history-method fw-bold">
+                                            <t t-esc="histItem.method" />
+                                        </span>
+                                    </div>
+                                    <div class="history-item-line2">
+                                        <code class="history-args" t-esc="histItem.args" />
+                                        <code class="history-kwargs" t-esc="histItem.kwargs" />
+                                    </div>
+                                </li>
+                            </t>
+                        </ul>
+                    </div>
+                    <!-- *** Fin Sección de Historial *** -->
+
+                </t>
+            </div>
+        </div>
+        <div class="floating-button"
+            t-if="!state.isVisible || !isInModal"
+            t-on-click="toggleSideBar">
+            <i class="fa fa-bug" />
+        </div>
+    </t>
+</templates>

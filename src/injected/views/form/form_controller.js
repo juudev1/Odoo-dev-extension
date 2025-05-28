@@ -1,17 +1,38 @@
-odoo.define('odoo_dev.form_controller', ['@web/views/form/form_controller', '@web/core/utils/patch', 'odoo_dev.components.sidebar_dev', 'odoo_dev.version_utils'], function (require) {
+odoo.define('odoo_dev.form_controller', ['@web/views/form/form_controller', "@web/core/utils/hooks", "@web/core/utils/patch", '@odoo/owl'], function (require) {
     "use strict";
 
     const { FormController } = require("@web/views/form/form_controller");
-    const SideBarDev = require('odoo_dev.components.sidebar_dev');
-    const odooVersion = require('odoo_dev.version_utils');
+    const { useService } = require("@web/core/utils/hooks");
+    const { patch } = require("@web/core/utils/patch");
+    const { useEffect, onWillUnmount } = require('@odoo/owl');
 
-    FormController.components = { ...FormController.components, SideBarDev };
+    patch(FormController.prototype, {
+        setup() {
+            super.setup();
+            this.activeRecordService = useService("activeRecordService");
 
-    if (odooVersion.isV16) {
-        FormController.template = 'odoo_dev.FormView16';
-    } else if (odooVersion.isV17) {
-        FormController.template = 'odoo_dev.FormView17';
-    } else if (odooVersion.isV18) {
-        FormController.template = 'odoo_dev.FormView';
-    }
+            useEffect(
+                (props) => {
+                    const { resModel, resId } = this.props;
+                    if (resModel && resId) {
+                        this.activeRecordService.setActiveRecord(resModel, resId, true);
+                    } else {
+                        this.activeRecordService.clearActiveRecord();
+                    }
+                },
+                () => [this.props.resModel, this.props.resId]
+            );
+
+            onWillUnmount(() => {
+                // Limpiar cuando el controlador del formulario se destruye
+                // Pero solo si este controlador fue el último en establecer un registro de formulario.
+                // Esto evita que un diálogo de formulario limpie el registro del formulario principal.
+                if (this.activeRecordService.state.resModel === this.props.resModel &&
+                    this.activeRecordService.state.resId === this.props.resId &&
+                    this.activeRecordService.state.isFormView) {
+                    this.activeRecordService.clearActiveRecord();
+                }
+            });
+        }
+    });
 });

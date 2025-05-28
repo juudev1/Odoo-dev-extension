@@ -1,4 +1,4 @@
-odoo.define('odoo_dev.components.field_xpath', ['@odoo/owl', '@web/core/utils/hooks', '@web/core/popover/popover_service'], function (require) {
+odoo.define('odoo_dev.components.field_xpath', ['@odoo/owl', '@web/core/utils/hooks'], function (require) {
     const { Component, useState, useRef } = require('@odoo/owl');
     const { useService } = require("@web/core/utils/hooks");
 
