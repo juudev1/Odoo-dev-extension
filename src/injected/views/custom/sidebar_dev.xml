@@ -142,6 +142,28 @@
                                     <t t-if="field.isLoading &amp;&amp; !field.isLoaded">
                                         <span class="text-muted">(Loading...)</span>
                                     </t>
+
+                                    <t
+                                        t-elif="typeof processedValue === 'object' &amp;&amp; processedValue.type === 'many2one' &amp;&amp; processedValue.id">
+                                        <span class="field-value me-1"
+                                            t-att-class="{'text-muted fst-italic': !field.isLoaded || field.accessError }"
+                                            t-esc="processedValue.name" />
+                                        <a t-if="processedValue.id &amp;&amp; processedValue.model"
+                                            t-att-href="`/web#id=${processedValue.id}&amp;model=${processedValue.model}&amp;view_type=form`"
+                                            target="_blank"
+                                            class="btn btn-sm btn-link p-0 open-m2o-link"
+                                            t-att-title="`Open ${processedValue.model} (ID: ${processedValue.id}) in new tab`">
+                                            <i class="fa fa-external-link-square" />
+                                        </a>
+                                        <!-- Optional: Refresh button if only ID was initially shown -->
+                                        <button
+                                            t-if="processedValue.name &amp;&amp; processedValue.name.startsWith('(ID:') &amp;&amp; !field.isLoading &amp;&amp; !field.accessError"
+                                            class="btn btn-sm btn-link p-0 ms-1"
+                                            t-on-click.prevent.stop="() => loadMany2oneName(field.key)"
+                                            title="Load name">
+                                            <i class="fa fa-refresh" />
+                                        </button>
+                                    </t>
                                     <t
                                         t-elif="typeof processedValue === 'object' &amp;&amp; processedValue.type === 'x2many'">
                                         <span class="me-2" t-esc="processedValue.countDisplay" />
@@ -234,6 +256,23 @@
                         </div>
                     </t>
                 </t>
+            </div>
+
+            <!-- Output Area for Reports -->
+            <div class="dev-sidebar-output"
+                t-if="state.reports.length > 0 and !state.showingX2ManyListFor and !state.showRunModelMethod">
+                <h5 class="mt-2">Reports</h5>
+                <ul class="list-group">
+                    <t t-foreach="state.reports" t-as="report" t-key="report.id">
+                        <li class="list-group-item dev-sidebar-item">
+                            <a t-att-href="report.url" target="_blank"
+                                class="d-flex justify-content-between align-items-center">
+                                <span t-esc="report.name" />
+                                <i class="fa fa-external-link" />
+                            </a>
+                        </li>
+                    </t>
+                </ul>
             </div>
 
             <div class="dev-sidebar-output" t-if="state.showRunModelMethod">

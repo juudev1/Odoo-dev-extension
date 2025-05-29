@@ -73,46 +73,68 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 const serviceResId = this.activeRecordService.state.resId;
                 const serviceIsFormView = this.activeRecordService.state.isFormView;
 
-                console.log(
-                    `[SideBarDev useEffect] Service (M: ${serviceModel}, ID: ${serviceResId}, Form: ${serviceIsFormView}), ` +
-                    `Sidebar (Visible: ${this.state.isVisible}, M: ${this.state.currentModel}, ID: ${this.state.currentRecordId}, NavStack: ${this.state.navigationStack.length})`
-                );
+                // This useEffect primarily ensures that if the sidebar *becomes visible*
+                // or if its root state *should* change due to service (and _onActiveRecordChanged didn't already handle it),
+                // it loads the correct data.
 
-                // Only sync from activeRecordService if sidebar is at its "root" state (no internal navigation)
+                // console.log( // Debug log
+                //     `[SideBarDev useEffect] Service (M: ${serviceModel}, ID: ${serviceResId}), ` +
+                //     `Sidebar (Visible: ${this.state.isVisible}, M: ${this.state.currentModel}, ID: ${this.state.currentRecordId}, NavStack: ${this.state.navigationStack.length})`
+                // );
+
                 if (this.state.navigationStack.length === 0 && !this.state.showingX2ManyListFor) {
-                    const modelChanged = this.state.currentModel !== serviceModel;
-                    const idChanged = this.state.currentRecordId !== serviceResId;
-                    const formViewChanged = this.state.isFormView !== serviceIsFormView;
+                    // Sidebar is at its root level.
+                    const modelChangedInState = this.state.currentModel !== serviceModel;
+                    const idChangedInState = this.state.currentRecordId !== serviceResId;
+                    const formViewChangedInState = this.state.isFormView !== serviceIsFormView;
 
-                    if (modelChanged || idChanged || formViewChanged) {
+                    if (modelChangedInState || idChangedInState || formViewChangedInState) {
+                        // This can happen if _onActiveRecordChanged didn't run or didn't update state,
+                        // or if props changed directly. Sync sidebar state to service state.
+                        // console.log("[SideBarDev useEffect] Root context mismatch between sidebar state and service. Syncing sidebar state.");
                         this.state.currentModel = serviceModel;
                         this.state.currentRecordId = serviceResId;
                         this.state.isFormView = serviceIsFormView;
-
-                        if (this.state.isVisible) {
-                            if (serviceModel && serviceResId !== null) {
-                                console.log("[SideBarDev useEffect] Record context changed by service, sidebar visible and at root. Calling getRecordValues()");
-                                this.getRecordValues();
-                            } else {
-                                console.log("[SideBarDev useEffect] Record context cleared by service, sidebar visible and at root. Clearing output.");
-                                this.clearOutput(true); // Keep visible, clear data
-                            }
-                        }
-                    } else if (this.state.isVisible && this.state.recordFields.length === 0 && serviceModel && serviceResId !== null) {
-                        // Sidebar became visible or was already visible but had no data for the current context
-                        console.log("[SideBarDev useEffect] Sidebar visible, no data for current service context. Calling getRecordValues()");
-                        this.getRecordValues();
+                        // The actual data loading for this new state will happen below if visible.
                     }
 
-                    if (this.state.showRunModelMethod && (modelChanged || idChanged)) {
+                    if (this.state.currentModel && this.state.currentRecordId !== null) {
+                        // If visible, at root, and has a valid model/id, ensure data is loaded for the "fields" tab
+                        // - if no fields are loaded OR
+                        // - if the active tab *should be* fields but isn't (e.g. reports/method was active, now record changed)
+                        if (!this.state.isLoadingFields &&
+                            this.state.recordFields.length === 0 &&
+                            !this.state.showRunModelMethod &&
+                            !this.state.reports.length &&
+                            (this.state.currentModel === serviceModel && this.state.currentRecordId === serviceResId) // ensure we are loading for the *actual current* service context
+                        ) {
+                            // console.log("[SideBarDev useEffect] Visible at root, current context valid, no field data for current 'fields' tab. Calling getRecordValues().");
+                            this.getRecordValues();
+                        }
+                    } else if (!this.state.currentModel && this.state.currentRecordId === null) {
+                        // Visible, at root, but context is empty (e.g., user navigated to list view)
+                        // console.log("[SideBarDev useEffect] Visible at root, empty context. Clearing output.");
+                        if (this.state.recordFields.length > 0 || this.state.reports.length > 0 || this.state.showRunModelMethod) {
+                            this.clearOutput(true); // Keep visible, clear all data views
+                        }
+                    }
+
+                    // Update method preview if relevant
+                    if (this.state.showRunModelMethod && (modelChangedInState || idChangedInState)) {
+                        // console.log("[SideBarDev useEffect] Updating model method preview due to root context change.");
                         this.updateModelMethodPreview();
                     }
                 }
+                // else: Sidebar has internal navigation, useEffect should not interfere with its current display.
+                // _onActiveRecordChanged handles overrides of internal navigation if main context changes.
             }, () => [
                 this.activeRecordService.state.resModel,
                 this.activeRecordService.state.resId,
                 this.activeRecordService.state.isFormView,
-                this.state.isVisible, // Re-evaluate if sidebar visibility changes
+                this.state.isVisible,
+                // Add dependencies that reflect the "active tab" if data loading depends on it
+                // this.state.showRunModelMethod, // if its change should trigger something in useEffect
+                // this.state.reports.length, // if its change should trigger something
             ]);
 
             onMounted(() => {
@@ -141,16 +163,82 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
         }
 
         _onActiveRecordChanged(payload) {
-            // This event primarily signals that an *external* change happened.
-            // The useEffect hook is now the main driver for reacting to activeRecordService.state changes.
-            // This listener can be simplified or primarily used for logging/debugging if needed.
+            if (!this.state.isVisible) {
+                this.toggleSideBar(true); // Ensure sidebar is visible to handle the change
+            }
             const eventData = payload.detail || payload;
-            console.log("[SideBarDev _onActiveRecordChanged] Event received:", eventData, "Current nav stack:", this.state.navigationStack.length);
+            const { resModel: serviceModel, resId: serviceResId, isFormView: serviceIsFormView } = eventData;
 
-            // If the sidebar is in an internal navigation state, we generally don't want
-            // _onActiveRecordChanged to immediately override it, unless it's a completely
-            // new record context from the main Odoo UI.
-            // The useEffect logic is better suited to handle this distinction.
+            console.log(`[SideBarDev _onActiveRecordChanged] Event: M=${serviceModel}, ID=${serviceResId}, Form=${serviceIsFormView}`);
+            // console.log(`  Current Sidebar State (before): M=${this.state.currentModel}, ID=${this.state.currentRecordId}, NavStack=${this.state.navigationStack.length}, X2MView=${!!this.state.showingX2ManyListFor}`);
+
+            // Determine if the service event is different from what the sidebar is currently displaying
+            const serviceIsDifferentFromCurrentDisplay =
+                serviceModel !== this.state.currentModel ||
+                serviceResId !== this.state.currentRecordId ||
+                (serviceIsFormView !== undefined && serviceIsFormView !== this.state.isFormView); // also consider formView change
+
+            console.log(`[SideBarDev _onActiveRecordChanged] Service is different from current display: ${serviceIsDifferentFromCurrentDisplay}`);
+
+            if (serviceIsDifferentFromCurrentDisplay) {
+                // The main Odoo UI context has changed to something different than what the sidebar is showing.
+                // This is a signal to potentially reset the sidebar's internal state.
+                // Si hay nav
+                if (this.state.navigationStack.length > 0 || this.state.showingX2ManyListFor) {
+                    // Sidebar has internal navigation. The main Odoo UI changed to something new.
+                    // We should clear the internal navigation AND adopt the new service context.
+                    console.log("[SideBarDev _onActiveRecordChanged] Main context changed. Overriding sidebar internal navigation and adopting new context from service.");
+
+                    this.state.navigationStack = [];
+                    this.state.showingX2ManyListFor = null;
+                    this.state.x2manyRecords = [];
+
+                    // **CRITICAL FIX: Directly update sidebar's currentModel/Id/isFormView to reflect the new service state.**
+                    this.state.currentModel = serviceModel;
+                    this.state.currentRecordId = serviceResId;
+                    this.state.isFormView = serviceIsFormView;
+
+
+                    if (serviceModel && serviceResId !== null) {
+                        console.log("[SideBarDev _onActiveRecordChanged]   Calling getRecordValues() directly after override.");
+                        this.getRecordValues(); // Load data for the new context immediately
+                    } else {
+                        console.log("[SideBarDev _onActiveRecordChanged]   Clearing output directly after override (empty context).");
+                        this.clearOutput(true);
+                    }
+
+
+                } else {
+                    // Sidebar was already at its root (no internal navigation).
+                    // The change is from one root context to another.
+                    // Directly update and let useEffect confirm or handle visibility.
+                    console.log("[SideBarDev _onActiveRecordChanged] Main context changed, sidebar at root. Updating context.");
+                    this.state.currentModel = serviceModel;
+                    this.state.currentRecordId = serviceResId;
+                    this.state.isFormView = serviceIsFormView;
+
+                    if (serviceModel && serviceResId !== null) {
+                        console.log("[SideBarDev _onActiveRecordChanged]   Root change, visible, no data. Calling getRecordValues().");
+                        this.getRecordValues();
+                    } else {
+                        this.clearOutput(true);
+                    }
+                }
+            } else {
+                // Service event matches what sidebar is already displaying (or attempting to display at root).
+                // No change in model/id/formView.
+                // This might be a refresh or the sidebar just opened on the current context.
+                // useEffect will handle loading data if sidebar is visible and has no data.
+                // console.log("[SideBarDev _onActiveRecordChanged] Event for current record or no significant model/id change. No direct action to change context.");
+                if (!this.state.isLoadingFields && this.state.recordFields.length === 0 &&
+                    this.state.currentModel && this.state.currentRecordId !== null &&
+                    !this.state.showRunModelMethod && !this.state.reports.length && // only if fields tab should be active
+                    this.state.navigationStack.length === 0 && !this.state.showingX2ManyListFor) { // and at root
+                    console.log("[SideBarDev _onActiveRecordChanged] Sidebar visible at root, event for current record, but no field data. Calling getRecordValues().");
+                    this.getRecordValues();
+                }
+            }
+            // console.log(`  Current Sidebar State (after): M=${this.state.currentModel}, ID=${this.state.currentRecordId}, NavStack=${this.state.navigationStack.length}, X2MView=${!!this.state.showingX2ManyListFor}`);
         }
 
         async revertToMainFormContext() {
@@ -514,7 +602,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
 
         }
 
-                async loadX2ManyCount(fieldKey) {
+        async loadX2ManyCount(fieldKey) {
             const fieldIndex = this.state.recordFields.findIndex(f => f.key === fieldKey);
             if (fieldIndex === -1) {
                 console.warn(`[SideBarDev loadX2ManyCount] Field ${fieldKey} not found in state.recordFields.`);
@@ -556,8 +644,8 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                         throw new Error(`Inverse field not defined for o2m field '${fieldKey}'`);
                     }
                     if (currentRecordId === null || currentRecordId === undefined) {
-                         console.error(`[SideBarDev loadX2ManyCount] CRITICAL: currentRecordId is null/undefined for o2m count. Field: ${fieldKey}`);
-                         throw new Error(`Current record ID is missing for o2m count of '${fieldKey}'`);
+                        console.error(`[SideBarDev loadX2ManyCount] CRITICAL: currentRecordId is null/undefined for o2m count. Field: ${fieldKey}`);
+                        throw new Error(`Current record ID is missing for o2m count of '${fieldKey}'`);
                     }
 
                     const domain = [[inverseField, '=', currentRecordId]];
@@ -587,7 +675,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                         const relatedIDs = readResult[0][fieldKey];
                         if (Array.isArray(relatedIDs)) {
                             count = relatedIDs.length;
-                            console.log(`  - m2m: Field '${fieldKey}' has ${count} related IDs:`, JSON.parse(JSON.stringify(relatedIDs.slice(0,5))) ); // Log first 5
+                            console.log(`  - m2m: Field '${fieldKey}' has ${count} related IDs:`, JSON.parse(JSON.stringify(relatedIDs.slice(0, 5)))); // Log first 5
                         } else {
                             console.warn(`  - m2m: Field '${fieldKey}' on '${currentModel}' did not return an array. Value:`, relatedIDs);
                             count = 0;
@@ -782,9 +870,15 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             }
 
             if (def.type === 'many2one') {
-                if (Array.isArray(value)) return value[1] || `(ID: ${value[0]})`;
-                if (typeof value === 'number') return `(ID: ${value} - Click 🔄)`; // ID only, name not loaded
-                return value === false ? '(empty)' : String(value);
+                if (Array.isArray(value) && typeof value[0] === 'number') { // We have [id, name]
+                    return { type: 'many2one', id: value[0], name: value[1] || `(ID: ${value[0]})`, model: def.relation };
+                } else if (typeof value === 'number') { // Only ID is present, name not loaded yet
+                    return { type: 'many2one', id: value, name: `(ID: ${value} - Click 🔄)`, model: def.relation };
+                } else if (value === false) {
+                    return '(empty)';
+                }
+                // If value is something else (e.g. error string), just return it
+                return String(value);
             }
             if (['one2many', 'many2many'].includes(def.type)) {
                 return { type: 'x2many', countDisplay: String(value || field.status || '(empty)'), fieldKey: field.key, fieldDefinition: def };
