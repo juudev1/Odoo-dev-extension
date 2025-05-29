@@ -1,5 +1,5 @@
 odoo.define('odoo_dev.components.webclient', ['@web/webclient/webclient', '@web/core/utils/hooks', '@web/core/utils/patch'], function (require) {
-
+    const { onMounted, onWillUnmount } = require("@odoo/owl");
     const { WebClient } = require("@web/webclient/webclient");
     const { useService } = require("@web/core/utils/hooks");
     const { patch } = require("@web/core/utils/patch");

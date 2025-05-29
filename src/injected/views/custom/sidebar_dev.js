@@ -3,49 +3,33 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
     const { useService } = require("@web/core/utils/hooks");
     const { FieldXpath } = require('odoo_dev.components.field_xpath');
     const { templates } = require('@web/core/assets');
-    const { mountComponent } = require('@web/env');
     const { registry } = require("@web/core/registry");
 
-    // Constantes para el historial
     const RUN_METHOD_HISTORY_KEY = 'odooDevRunMethodHistory';
-    const MAX_HISTORY_SIZE = 10; // Guardar los últimos 10
+    const MAX_HISTORY_SIZE = 10;
 
     class SideBarDev extends Component {
 
         setup() {
-            console.log("[SideBarDev setup] Initializing SideBarDev component...");
-
             this.orm = useService('orm');
             this.notification = useService("notification");
             this.activeRecordService = useService("activeRecordService");
-
             this.envBus = this.env.bus;
+
             this._onActiveRecordChanged = this._onActiveRecordChanged.bind(this);
             this.revertToMainFormContext = this.revertToMainFormContext.bind(this);
 
-            console.log("[SideBarDev setup] Active Record Service (initial state):",
-                this.activeRecordService,
-                this.activeRecordService.state.resId,
-                this.activeRecordService.state.resModel,
-                this.activeRecordService.state.isFormView
-            );
-
             this.state = useState({
-                // Usar el estado del servicio para inicializar
                 currentModel: this.activeRecordService.state.resModel,
                 currentRecordId: this.activeRecordService.state.resId,
                 isFormView: this.activeRecordService.state.isFormView,
-
                 recordFields: [],
                 fieldDefinitions: {},
-                isVisible: false, // O true si quieres que empiece visible
+                isVisible: false,
                 reports: [],
-                // record: null, // Ya no es necesario, usamos currentModel/Id
-
                 editingFieldKey: null,
                 editingFieldValue: null,
                 isSavingEdit: false,
-
                 showRunModelMethod: false,
                 modelMethodName: '',
                 modelMethodArgs: '[]',
@@ -56,6 +40,11 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 isModelMethodRunning: false,
                 runMethodHistory: [],
                 focusRunButtonAfterPatch: false,
+                navigationStack: [],
+                showingX2ManyListFor: null,
+                x2manyRecords: [],
+                isLoadingX2Many: false,
+                isLoadingFields: false, // Added for general field loading state
             });
 
             this.methodNameInput = useRef('methodNameInput');
@@ -67,86 +56,71 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
 
             this.database = window.odoo.info.db;
 
-            /* Enlazamos métodos (sin cambios aquí) */
-            this.getRecordValues = this.getRecordValues.bind(this);
-            this.getReports = this.getReports.bind(this);
-            this.runModelMethodOpt = this.runModelMethodOpt.bind(this);
-            this.startEdit = this.startEdit.bind(this);
-            this.cancelEdit = this.cancelEdit.bind(this);
-            this.saveEdit = this.saveEdit.bind(this);
-            this.closeSideBar = this.closeSideBar.bind(this);
-            this.openSideBar = this.openSideBar.bind(this);
-            this.toggleSideBar = this.toggleSideBar.bind(this);
-            this.runModelMethod = this.runModelMethod.bind(this);
-            this.copyModelMethodPreview = this.copyModelMethodPreview.bind(this);
-            this.updateModelMethodPreview = this.updateModelMethodPreview.bind(this);
-            this.loadRunMethodHistory = this.loadRunMethodHistory.bind(this);
-            this.saveRunMethodHistory = this.saveRunMethodHistory.bind(this);
-            this.addToRunMethodHistory = this.addToRunMethodHistory.bind(this);
-            this.applyHistoryItem = this.applyHistoryItem.bind(this);
-            this.clearRunMethodHistory = this.clearRunMethodHistory.bind(this);
-            this.loadX2ManyCount = this.loadX2ManyCount.bind(this);
-            this.loadMany2oneName = this.loadMany2oneName.bind(this);
+            /* Bind methods */
+            const methodsToBind = [
+                'getRecordValues', 'getReports', 'runModelMethodOpt', 'startEdit', 'cancelEdit',
+                'saveEdit', 'closeSideBar', 'openSideBar', 'toggleSideBar', 'runModelMethod',
+                'copyModelMethodPreview', 'updateModelMethodPreview', 'loadRunMethodHistory',
+                'saveRunMethodHistory', 'addToRunMethodHistory', 'applyHistoryItem', 'clearRunMethodHistory',
+                'loadX2ManyCount', 'loadMany2oneName', 'showX2ManyRecords', 'navigateToRelatedRecord',
+                'navigateBack', 'clearX2ManyView'
+            ];
+            methodsToBind.forEach(method => this[method] = this[method].bind(this));
 
-            useEffect(
-                () => {
-                    this.clearOutput(true); // Limpiar salida al montar
-                    
-                    // Este callback se ejecuta cuando una o más de las dependencias en el array de abajo cambian.
-                    const serviceModel = this.activeRecordService.state.resModel;
-                    const serviceResId = this.activeRecordService.state.resId;
-                    const serviceIsFormView = this.activeRecordService.state.isFormView;
 
-                    console.log(
-                        `[SideBarDev useEffect TRIGGERED] ` +
-                        `Service (M: ${serviceModel}, ID: ${serviceResId}, Form: ${serviceIsFormView}), ` +
-                        `Sidebar (Visible: ${this.state.isVisible}, M: ${this.state.currentModel}, ID: ${this.state.currentRecordId})`
-                    );
+            useEffect(() => {
+                const serviceModel = this.activeRecordService.state.resModel;
+                const serviceResId = this.activeRecordService.state.resId;
+                const serviceIsFormView = this.activeRecordService.state.isFormView;
 
-                    // Determinar si el registro del servicio ha cambiado *respecto al estado actual del sidebar*
-                    const modelChangedInService = this.state.currentModel !== serviceModel;
-                    const idChangedInService = this.state.currentRecordId !== serviceResId;
-                    // Podrías también querer rastrear si 'isFormView' cambió si afecta tu lógica de carga.
-                    // const formViewStatusChanged = this.state.isFormView !== serviceIsFormView;
+                console.log(
+                    `[SideBarDev useEffect] Service (M: ${serviceModel}, ID: ${serviceResId}, Form: ${serviceIsFormView}), ` +
+                    `Sidebar (Visible: ${this.state.isVisible}, M: ${this.state.currentModel}, ID: ${this.state.currentRecordId}, NavStack: ${this.state.navigationStack.length})`
+                );
 
-                    // Actualizar el estado interno del sidebar para que siempre refleje el servicio
-                    // Esto se hace ANTES de las comprobaciones de 'modelChangedInService' e 'idChangedInService'
-                    // para que esas variables reflejen el cambio DESDE el estado anterior del sidebar HACIA el nuevo estado del servicio.
-                    if (this.state.currentModel !== serviceModel) {
+                // Only sync from activeRecordService if sidebar is at its "root" state (no internal navigation)
+                if (this.state.navigationStack.length === 0 && !this.state.showingX2ManyListFor) {
+                    const modelChanged = this.state.currentModel !== serviceModel;
+                    const idChanged = this.state.currentRecordId !== serviceResId;
+                    const formViewChanged = this.state.isFormView !== serviceIsFormView;
+
+                    if (modelChanged || idChanged || formViewChanged) {
                         this.state.currentModel = serviceModel;
-                    }
-                    if (this.state.currentRecordId !== serviceResId) {
                         this.state.currentRecordId = serviceResId;
-                    }
-                    if (this.state.isFormView !== serviceIsFormView) {
                         this.state.isFormView = serviceIsFormView;
+
+                        if (this.state.isVisible) {
+                            if (serviceModel && serviceResId !== null) {
+                                console.log("[SideBarDev useEffect] Record context changed by service, sidebar visible and at root. Calling getRecordValues()");
+                                this.getRecordValues();
+                            } else {
+                                console.log("[SideBarDev useEffect] Record context cleared by service, sidebar visible and at root. Clearing output.");
+                                this.clearOutput(true); // Keep visible, clear data
+                            }
+                        }
+                    } else if (this.state.isVisible && this.state.recordFields.length === 0 && serviceModel && serviceResId !== null) {
+                        // Sidebar became visible or was already visible but had no data for the current context
+                        console.log("[SideBarDev useEffect] Sidebar visible, no data for current service context. Calling getRecordValues()");
+                        this.getRecordValues();
                     }
 
-                    // Actualizar la vista previa del método si el registro cambió (y la sección está activa)
-                    if (this.state.showRunModelMethod && (modelChangedInService || idChangedInService)) {
-                        console.log("[SideBarDev useEffect] Updating model method preview due to record change.");
+                    if (this.state.showRunModelMethod && (modelChanged || idChanged)) {
                         this.updateModelMethodPreview();
                     }
-                },
-                // Dependencias CORRECTAS:
-                () => [
-                    this.activeRecordService.state.resModel,
-                    this.activeRecordService.state.resId,
-                    this.activeRecordService.state.isFormView, // Solo si realmente afecta la lógica de carga o visualización
-                    this.state.isVisible,
-                ]
-            );
-
-            // onWillUpdateProps ya no es necesario para props.record
-            const updatePreviewIfNeeded = () => {
-                if (this.state.showRunModelMethod) {
-                    this.updateModelMethodPreview();
                 }
-            };
+            }, () => [
+                this.activeRecordService.state.resModel,
+                this.activeRecordService.state.resId,
+                this.activeRecordService.state.isFormView,
+                this.state.isVisible, // Re-evaluate if sidebar visibility changes
+            ]);
 
             onMounted(() => {
                 if (this.envBus) {
                     this.envBus.addEventListener("ACTIVE_RECORD_CHANGED", this._onActiveRecordChanged);
+                }
+                if (this.state.showRunModelMethod) {
+                    this.loadRunMethodHistory();
                 }
             });
 
@@ -157,85 +131,53 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             });
 
             onPatched(() => {
-                updatePreviewIfNeeded();
+                // updateModelMethodPreview is called directly when its inputs change or section opens
                 if (this.state.focusRunButtonAfterPatch && this.el) {
                     const runButton = this.el.querySelector('.dev-sidebar-btn-run-method');
-                    if (runButton) {
-                        runButton.focus();
-                    }
+                    if (runButton) runButton.focus();
                     this.state.focusRunButtonAfterPatch = false;
                 }
             });
         }
 
-
-        _onActiveRecordChanged(payload) { // o dentro del useEffect
+        _onActiveRecordChanged(payload) {
+            // This event primarily signals that an *external* change happened.
+            // The useEffect hook is now the main driver for reacting to activeRecordService.state changes.
+            // This listener can be simplified or primarily used for logging/debugging if needed.
             const eventData = payload.detail || payload;
-            console.log("[SideBarDev _onActiveRecordChanged] Event received, 'this' should be SideBarDev instance:", this);
-            console.log("[SideBarDev _onActiveRecordChanged] Event data:", eventData);
+            console.log("[SideBarDev _onActiveRecordChanged] Event received:", eventData, "Current nav stack:", this.state.navigationStack.length);
 
-            const { resModel, resId, isFormView } = eventData;
-
-            // Guardar el estado que *llega* del servicio
-            const serviceModel = resModel;
-            const serviceResId = resId;
-            const serviceIsFormView = isFormView;
-
-            // Determinar si el registro del servicio ha cambiado *respecto al estado actual del sidebar*
-            const modelActuallyChanged = this.state.currentModel !== serviceModel;
-            const idActuallyChanged = this.state.currentRecordId !== serviceResId;
-
-            // Actualizar el estado interno del sidebar para que siempre refleje el servicio
-            this.state.currentModel = serviceModel;
-            this.state.currentRecordId = serviceResId;
-            this.state.isFormView = serviceIsFormView; // Esto es importante para saber si el contexto actual es un form
-
-            if (this.state.isVisible) {
-                if (modelActuallyChanged || idActuallyChanged) {
-                    if (serviceModel && serviceResId !== null) {
-                        console.log("[SideBarDev _onActiveRecordChanged/useEffect] Record changed, sidebar visible. Calling getRecordValues()");
-                        // this.getRecordValues();
-                    } else {
-                        console.log("[SideBarDev _onActiveRecordChanged/useEffect] Record cleared, sidebar visible. Calling clearOutput()");
-                        this.clearOutput(true);
-                    }
-                } else {
-                    const noDataLoaded = this.state.recordFields.length === 0 && serviceModel && serviceResId !== null;
-                    if (noDataLoaded) {
-                        console.log("[SideBarDev _onActiveRecordChanged/useEffect] Sidebar opened or event re-triggered, no data loaded. Calling getRecordValues()");
-                        // this.getRecordValues();
-                    }
-                }
-            }
-            if (this.state.showRunModelMethod && (modelActuallyChanged || idActuallyChanged)) {
-                this.updateModelMethodPreview();
-            }
+            // If the sidebar is in an internal navigation state, we generally don't want
+            // _onActiveRecordChanged to immediately override it, unless it's a completely
+            // new record context from the main Odoo UI.
+            // The useEffect logic is better suited to handle this distinction.
         }
 
         async revertToMainFormContext() {
             const mainFormContext = this.activeRecordService.getMainFormContext();
             if (mainFormContext) {
                 console.log("[SideBarDev] Reverting to MainFormContext:", mainFormContext);
+                this.state.navigationStack = [];
+                this.state.showingX2ManyListFor = null;
+                this.state.x2manyRecords = [];
 
-                // Actualizar el estado local del sidebar para que coincida con el contexto del formulario principal
+                // These state updates will trigger the useEffect, which will call getRecordValues
                 this.state.currentModel = mainFormContext.resModel;
                 this.state.currentRecordId = mainFormContext.resId;
-                this.state.isFormView = mainFormContext.isFormView; // Debería ser true
+                this.state.isFormView = mainFormContext.isFormView;
 
-                // Luego, recargar los datos del sidebar con este contexto
-                // await this.getRecordValues();
+                // Optionally, explicitly update activeRecordService if it didn't originate the change
+                if (this.activeRecordService.state.resModel !== mainFormContext.resModel ||
+                    this.activeRecordService.state.resId !== mainFormContext.resId) {
+                    this.activeRecordService.setActiveRecord(
+                        mainFormContext.resModel,
+                        mainFormContext.resId,
+                        true
+                    );
+                } else if (!this.state.isVisible) { // If already on main context but sidebar was closed
+                    this.getRecordValues(); // Manually trigger if useEffect won't due to no state change
+                }
 
-                // Opcional: si quieres que activeRecordService.state.current* también refleje esto,
-                // podrías llamar a this.activeRecordService.setActiveRecord(...mainFormContext);
-                // pero esto dispararía el useEffect de nuevo. Es más simple manejarlo localmente
-                // en el sidebar si solo es para visualización temporal.
-                // Si quieres que sea el "estado activo global" de nuevo:
-                this.activeRecordService.setActiveRecord(
-                    mainFormContext.resModel,
-                    mainFormContext.resId,
-                    true // Es un contexto de formulario
-                );
-                // El useEffect ya se encargará de llamar a getRecordValues si el setActiveRecord cambia el estado.
 
             } else {
                 this.notification.add("No main form context to revert to.", { type: "info" });
@@ -244,50 +186,24 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
 
         async loadRunMethodHistory() {
             try {
-                // const history = await new Promise((resolve, reject) => {
-                //     // Define un ID único para este request para correlacionar la respuesta
-                //     const requestId = `historyLoad_${Date.now()}_${Math.random()}`;
-
-                //     const listener = (event) => {
-                //         if (event.source === window && event.data && event.data.type === 'ODEV_HISTORY_LOAD_RESPONSE' && event.data.requestId === requestId) {
-                //             window.removeEventListener('message', listener);
-                //             if (event.data.error) {
-                //                 reject(new Error(event.data.error));
-                //             } else {
-                //                 resolve(event.data.payload);
-                //             }
-                //         }
-                //     };
-                //     window.addEventListener('message', listener);
-
-                //     // Enviar mensaje al content script
-                //     window.postMessage({ type: 'ODEV_REQUEST_HISTORY_LOAD', key: RUN_METHOD_HISTORY_KEY, requestId }, '*');
-
-                //     // Timeout por si el content script no responde
-                //     setTimeout(() => {
-                //         window.removeEventListener('message', listener);
-                //         reject(new Error("Timeout waiting for history load response"));
-                //     }, 5000); // 5 segundos de timeout
-                // });
-
-                // if (history && Array.isArray(history)) {
-                //     this.state.runMethodHistory = history;
-                //     console.log("Run method history loaded via postMessage:", this.state.runMethodHistory);
-                // } else {
-                //     this.state.runMethodHistory = [];
-                // }
+                const data = await new Promise((resolve, reject) => {
+                    chrome.storage.local.get(RUN_METHOD_HISTORY_KEY, (result) => {
+                        if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+                        resolve(result[RUN_METHOD_HISTORY_KEY]);
+                    });
+                });
+                this.state.runMethodHistory = (data && Array.isArray(data)) ? data : [];
             } catch (error) {
                 console.error("Error loading run method history:", error);
                 this.state.runMethodHistory = [];
             }
         }
+
         async saveRunMethodHistory(historyArray) {
             try {
                 await new Promise((resolve, reject) => {
                     chrome.storage.local.set({ [RUN_METHOD_HISTORY_KEY]: historyArray }, () => {
-                        if (chrome.runtime.lastError) {
-                            return reject(chrome.runtime.lastError);
-                        }
+                        if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
                         resolve();
                     });
                 });
@@ -298,22 +214,11 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
         }
 
         addToRunMethodHistory(model, method, argsString, kwargsString) {
-            const newEntry = {
-                model: model,
-                method: method,
-                args: argsString,
-                kwargs: kwargsString,
-                timestamp: Date.now()
-            };
-
-            if (this.state.runMethodHistory.length > 0) {
-                const lastEntry = this.state.runMethodHistory[0];
-                if (lastEntry.model === newEntry.model &&
-                    lastEntry.method === newEntry.method &&
-                    lastEntry.args === newEntry.args &&
-                    lastEntry.kwargs === newEntry.kwargs) {
-                    return;
-                }
+            const newEntry = { model, method, args: argsString, kwargs: kwargsString, timestamp: Date.now() };
+            const lastEntry = this.state.runMethodHistory[0];
+            if (lastEntry && lastEntry.model === newEntry.model && lastEntry.method === newEntry.method &&
+                lastEntry.args === newEntry.args && lastEntry.kwargs === newEntry.kwargs) {
+                return;
             }
             const updatedHistory = [newEntry, ...this.state.runMethodHistory].slice(0, MAX_HISTORY_SIZE);
             this.state.runMethodHistory = updatedHistory;
@@ -338,138 +243,145 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
 
         clearOutput(keepVisibility = false) {
             this.state.recordFields = [];
-            this.state.fieldDefinitions = {}; // Limpiar también las definiciones
+            this.state.fieldDefinitions = {};
             this.state.reports = [];
-            this.state.showRunModelMethod = false;
-            this.state.modelMethodName = '';
-            this.state.modelMethodArgs = '[]';
-            this.state.modelMethodKwargs = '{}';
-            this.state.modelMethodOutput = null;
-            this.state.modelMethodOutputIsError = false;
-            this.state.modelMethodPreview = '';
-            this.state.isModelMethodRunning = false;
+            // Only clear showRunModelMethod if we are not keeping visibility for a specific purpose
+            // like switching tabs. If closing panel, then yes, reset.
+            if (!keepVisibility) {
+                this.state.showRunModelMethod = false;
+                this.state.modelMethodOutput = null; // Clear output when panel closes
+            }
+            // Don't clear method inputs, they are useful to keep.
+            // this.state.modelMethodName = '';
+            // this.state.modelMethodArgs = '[]';
+            // this.state.modelMethodKwargs = '{}';
+            // this.state.modelMethodPreview = '';
+            // this.state.isModelMethodRunning = false;
+
             if (!keepVisibility) {
                 this.state.isVisible = false;
-                // Si cerramos el panel, también limpiamos el registro activo en el servicio
-                // para que no intente recargar datos si se reabre sin un nuevo contexto.
-                // OJO: Esto podría ser polémico si otro componente depende de ese estado.
-                // Por ahora lo comento, ya que el FormController debería limpiar al desmontarse.
-                // this.activeRecordService.clearActiveRecord();
+                this.state.navigationStack = [];
+                this.state.showingX2ManyListFor = null;
+                this.state.x2manyRecords = [];
             }
         }
 
         async getRecordValues() {
-            this.clearOutput(true); // Limpiar salida anterior, mantener visibilidad
+            // Clear previous data for the field list view
+            this.state.recordFields = [];
+            this.state.fieldDefinitions = {};
+            this.state.reports = []; // Clear reports when fetching fields
+            // Do not clear showRunModelMethod or its inputs here, allow tab-like behavior
+            // Do not clear navigation stack or x2many view here, this function is for loading fields of currentModel/Id
 
-            // Usar this.state.currentModel y this.state.currentRecordId
-            if (this.state.currentRecordId === null || !this.state.currentModel) { // Puede ser ID 0
-                console.warn("[SideBarDev getRecordValues] No valid record or record ID from service state.");
-                this.state.recordFields = [];
-                this.state.fieldDefinitions = {};
+            if (this.state.currentRecordId === null || !this.state.currentModel) {
+                console.warn("[SideBarDev getRecordValues] No valid record or record ID.");
+                this.state.isLoadingFields = false;
                 return;
             }
 
-            // const record = this.props.record; // Ya no se usa
             const currentModel = this.state.currentModel;
             const currentRecordId = this.state.currentRecordId;
 
             console.log(`[SideBarDev getRecordValues] Fetching data for ${currentModel} ID ${currentRecordId}`);
-            let fieldDefs = {};
-            this.state.recordFields = [];
+            this.state.isLoadingFields = true;
+            this.state.showRunModelMethod = false; // Ensure fields tab is active
+            this.state.showingX2ManyListFor = null; // Ensure not in x2m list view
+
 
             try {
-                fieldDefs = await this.orm.call(currentModel, 'fields_get', [[]], {
+                const fieldDefs = await this.orm.call(currentModel, 'fields_get', [[]], {
                     attributes: ['string', 'type', 'readonly', 'relation', 'selection', 'required', 'related', 'compute', 'depends', 'company_dependent', 'groups', 'inverse_name', 'relation_field']
                 });
                 this.state.fieldDefinitions = fieldDefs;
 
-                const fieldProcessingPromises = [];
+                const fieldsToLoadDirectly = [];
                 const initialPlaceholders = [];
 
                 for (const key in fieldDefs) {
                     const def = fieldDefs[key];
-
-                    if (def.type === 'binary' && def.related) {
-                        initialPlaceholders.push({ key, value: '(Related Binary)', definition: def, accessError: false, isLoading: false, isLoaded: true });
-                        continue;
-                    }
-
                     let initialValue = '(Loading...)';
                     let initialIsLoaded = false;
                     let fieldStatus = '';
+                    let isLoading = true; // Assume loading initially
 
-                    if (def.type === 'many2one') {
-                        initialValue = null; initialIsLoaded = false; fieldStatus = '(Click 🔄 to load)';
+                    if (def.type === 'binary' && def.related) {
+                        initialValue = '(Related Binary)'; initialIsLoaded = true; isLoading = false;
+                    } else if (def.type === 'many2one') {
+                        initialValue = null; fieldStatus = '(Click 🔄 to load)'; isLoading = false; // Not loading name/id yet
                     } else if (['one2many', 'many2many'].includes(def.type)) {
-                        initialValue = null; initialIsLoaded = false; fieldStatus = '(Click 🔄 to load count)';
+                        initialValue = null; fieldStatus = '(Click 🔄 to load count)'; isLoading = false; // Not loading count yet
                     } else if (def.type === 'binary') {
-                        initialValue = '(Binary Data)'; initialIsLoaded = true;
+                        initialValue = '(Binary Data)'; initialIsLoaded = true; isLoading = false;
+                    } else {
+                        // Other types will be loaded directly
+                        fieldsToLoadDirectly.push(key);
                     }
 
-                    const placeholder = {
+                    initialPlaceholders.push({
                         key: key,
                         value: initialValue,
                         definition: def,
                         accessError: false,
-                        isLoading: false,
+                        isLoading: isLoading, // Reflects if the field itself (not sub-data like m2o name) is loading
                         isLoaded: initialIsLoaded,
                         status: fieldStatus
-                    };
-                    initialPlaceholders.push(placeholder);
-
-                    if (!['many2one', 'one2many', 'many2many', 'binary'].includes(def.type)) {
-                        const promise = (async (targetField) => {
-                            let updatedField = { ...targetField };
-                            try {
-                                const readResult = await this.orm.call(currentModel, 'read', [[currentRecordId]], { fields: [updatedField.key], context: {} });
-                                if (readResult.length > 0 && readResult[0].hasOwnProperty(updatedField.key)) {
-                                    updatedField.value = readResult[0][updatedField.key];
-                                    updatedField.isLoaded = true;
-                                    updatedField.accessError = false;
-                                } else {
-                                    updatedField.value = '(Field Not Returned)';
-                                    updatedField.accessError = true;
-                                    updatedField.isLoaded = true;
-                                }
-                            } catch (err) {
-                                const errorMessage = err.message?.data?.message || err.message || 'Read Failed';
-                                updatedField.value = `(${errorMessage.split('\n')[0]})`;
-                                updatedField.accessError = true;
-                                updatedField.isLoaded = true;
-                            }
-                            return updatedField;
-                        })(placeholder);
-                        fieldProcessingPromises.push(promise);
-                    } else {
-                        fieldProcessingPromises.push(Promise.resolve(placeholder));
-                    }
+                    });
                 }
 
                 initialPlaceholders.sort((a, b) => (a.definition.string || a.key).localeCompare(b.definition.string || b.key));
-                this.state.recordFields = [...initialPlaceholders];
+                this.state.recordFields = [...initialPlaceholders]; // Show placeholders immediately
 
-                const results = await Promise.allSettled(fieldProcessingPromises);
-                const finalFieldsMap = new Map();
-                initialPlaceholders.forEach(p => finalFieldsMap.set(p.key, p));
-                results.forEach(result => {
-                    if (result.status === 'fulfilled') {
-                        const updatedField = result.value;
-                        if (updatedField && updatedField.key) {
-                            finalFieldsMap.set(updatedField.key, updatedField);
+                if (fieldsToLoadDirectly.length > 0) {
+                    let readResultData = {};
+                    try {
+                        const readResults = await this.orm.call(currentModel, 'read', [[currentRecordId]], { fields: fieldsToLoadDirectly, context: {} });
+                        if (readResults.length > 0) {
+                            readResultData = readResults[0];
                         }
+                    } catch (readError) {
+                        console.error(`[SideBarDev getRecordValues] Error reading fields: ${fieldsToLoadDirectly.join(', ')}`, readError);
+                        // Mark all these fields as errored
+                        fieldsToLoadDirectly.forEach(key => {
+                            const field = this.state.recordFields.find(f => f.key === key);
+                            if (field) {
+                                const errorMessage = readError.message?.data?.message || readError.message || 'Read Failed';
+                                field.value = `(${errorMessage.split('\n')[0]})`;
+                                field.accessError = true;
+                                field.isLoading = false;
+                                field.isLoaded = true;
+                            }
+                        });
+                        // Optionally, re-throw or notify if it's a critical failure for all fields
                     }
-                });
 
-                const finalFieldsArray = Array.from(finalFieldsMap.values());
-                finalFieldsArray.sort((a, b) => (a.definition.string || a.key).localeCompare(b.definition.string || b.key));
-                this.state.recordFields = [...finalFieldsArray];
-                console.log("[SideBarDev getRecordValues] Record fields processed:", this.state.recordFields);
+                    // Update placeholders with read data or mark as not returned
+                    this.state.recordFields.forEach(field => {
+                        if (fieldsToLoadDirectly.includes(field.key) && !field.accessError) { // if not already marked as error from batch read
+                            if (readResultData.hasOwnProperty(field.key)) {
+                                field.value = readResultData[field.key];
+                                field.accessError = false;
+                            } else {
+                                field.value = '(Field Not Returned by Read)';
+                                field.accessError = true; // Or some other indicator
+                            }
+                            field.isLoading = false;
+                            field.isLoaded = true;
+                        }
+                    });
+                }
+                // For fields that were not part of bulk load (m2o, x2m, binary), their isLoading was already set.
+                // And for those in bulk load, isLoading is now false.
+                this.state.recordFields = [...this.state.recordFields]; // Ensure reactivity after updates
+                console.log("[SideBarDev getRecordValues] Record fields processed:", JSON.parse(JSON.stringify(this.state.recordFields)));
 
             } catch (error) {
                 console.error("[SideBarDev getRecordValues] Error fetching field definitions:", error);
                 this.notification.add(`Error fetching field definitions for ${currentModel}.`, { type: 'danger' });
                 this.state.recordFields = [{ key: 'ERROR', value: 'Failed to get definitions.', definition: { string: 'Error' }, accessError: true, isLoading: false, isLoaded: true }];
                 this.state.fieldDefinitions = {};
+            } finally {
+                this.state.isLoadingFields = false;
             }
         }
 
@@ -479,133 +391,238 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
 
             const fieldData = this.state.recordFields[fieldIndex];
             const def = fieldData.definition;
-            const model = def.relation;
+            const relatedModel = def.relation;
 
-            let newRecordFields = [...this.state.recordFields];
-            let updatedFieldData = { ...fieldData, isLoading: true, accessError: false };
-            newRecordFields[fieldIndex] = updatedFieldData;
-            this.state.recordFields = newRecordFields;
+            Object.assign(this.state.recordFields[fieldIndex], { isLoading: true, accessError: false, status: '(Loading name...)' });
+            this.state.recordFields = [...this.state.recordFields];
 
-            console.log(`Loading name for ${fieldKey} (model: ${model})`);
+            console.log(`Loading name for M2O ${fieldKey} (model: ${relatedModel}) on ${this.state.currentModel}/${this.state.currentRecordId}`);
 
+            let m2oId = null;
+            let currentNameFromRead = null; // To store name if read from parent
+
+            // 1. Get the ID of the M2O record
             try {
-                let m2oId = null;
-                try {
-                    // Usar this.state.currentModel y this.state.currentRecordId
+                // If fieldData.value is already [id, name], we have both.
+                if (Array.isArray(fieldData.value) && typeof fieldData.value[0] === 'number') {
+                    m2oId = fieldData.value[0];
+                    currentNameFromRead = fieldData.value[1]; // Might be a stale name, but better than nothing
+                } else if (typeof fieldData.value === 'number') { // Only ID is present
+                    m2oId = fieldData.value;
+                } else { // ID not available or not in expected format, try to read it from the parent record
                     const idReadResult = await this.orm.call(this.state.currentModel, 'read', [[this.state.currentRecordId]], { fields: [fieldKey] });
                     if (idReadResult.length > 0 && idReadResult[0][fieldKey]) {
                         const rawIdValue = idReadResult[0][fieldKey];
-                        m2oId = Array.isArray(rawIdValue) ? rawIdValue[0] : (typeof rawIdValue === 'number' ? rawIdValue : null);
+                        // Odoo M2O fields return [id, name_display] or false.
+                        if (Array.isArray(rawIdValue)) {
+                            m2oId = rawIdValue[0];
+                            currentNameFromRead = rawIdValue[1];
+                        } else if (typeof rawIdValue === 'number') { // Should not happen if field is proper m2o from read
+                            m2oId = rawIdValue;
+                        }
+                        // Store what we read back into fieldData.value
+                        fieldData.value = rawIdValue || false;
+                    } else {
+                        fieldData.value = false; // Explicitly set to false if empty
                     }
-                } catch (idReadError) {
-                    console.error(`Failed to read ID for M2O field ${fieldKey}:`, idReadError);
-                    throw new Error(`Could not read field ${fieldKey} ID`);
                 }
+            } catch (idReadError) {
+                console.error(`Error reading M2O ID for ${fieldKey}:`, idReadError);
+                const errorMsg = idReadError.message?.data?.message || idReadError.message || 'ID Read Error';
+                Object.assign(this.state.recordFields[fieldIndex], {
+                    value: `(Error: ${errorMsg.substring(0, 50)})`,
+                    isLoading: false, isLoaded: true, accessError: true, status: ''
+                });
+                this.state.recordFields = [...this.state.recordFields];
+                this.notification.add(`Failed to read ID for ${def.string || fieldKey}.`, { type: 'danger' });
+                return; // Stop if we can't even get the ID
+            }
 
-                let finalValue = false;
-                if (m2oId) {
+            let finalDisplayValue = false; // Odoo's representation for empty m2o
+            let accessErrorOccurred = false;
+
+            if (m2oId) {
+                // 2. Attempt to read common name fields first (more reliable than assuming name_get exists)
+                let nameFieldsToTry = ['display_name', 'name']; // Common fields for display name
+                // You could potentially fetch _rec_name from fields_get of the relatedModel if you want to be super precise
+                // but that's an extra call. 'display_name' and 'name' cover most cases.
+
+                let nameFoundByRead = false;
+                for (const nameField of nameFieldsToTry) {
                     try {
-                        const nameGetResult = await this.orm.call(model, 'name_get', [[m2oId]]);
-                        finalValue = nameGetResult.length > 0 ? nameGetResult[0] : [m2oId, `(ID: ${m2oId} - Not Found?)`];
-                    } catch (nameGetError) {
-                        console.warn(`name_get for ${model} ID ${m2oId} failed:`, nameGetError);
-                        finalValue = [m2oId, `(ID: ${m2oId} - Name Error)`];
-                        if (nameGetError.message?.data?.name?.includes('AccessError')) {
-                            updatedFieldData.accessError = true;
-                            finalValue = `(Access Denied to ${model})`;
+                        const readNameResult = await this.orm.call(relatedModel, 'read', [[m2oId]], { fields: [nameField] });
+                        if (readNameResult.length > 0 && readNameResult[0][nameField]) {
+                            finalDisplayValue = [m2oId, readNameResult[0][nameField]];
+                            nameFoundByRead = true;
+                            break; // Found a name, no need to try others or name_get
+                        }
+                    } catch (readNameError) {
+                        // Log this error but continue, as name_get might still work or other fields might exist
+                        console.warn(`Reading '${nameField}' for ${relatedModel} ID ${m2oId} failed:`, readNameError);
+                        // If it's an access error for this specific read, mark it.
+                        if (readNameError.message?.data?.name?.includes('AccessError')) {
+                            accessErrorOccurred = true; // Potential access error to the related model/field
                         }
                     }
                 }
 
-                newRecordFields = [...this.state.recordFields];
-                const finalFieldData = { ...newRecordFields[fieldIndex], value: finalValue, isLoading: false, isLoaded: true, accessError: updatedFieldData.accessError };
-                newRecordFields[fieldIndex] = finalFieldData;
-                this.state.recordFields = newRecordFields;
+                // 3. If reading common name fields failed, fallback to name_get (if no critical access error yet)
+                if (!nameFoundByRead && !accessErrorOccurred) {
+                    try {
+                        console.log(`Attempting name_get for ${relatedModel} ID ${m2oId}`);
+                        const nameGetResult = await this.orm.call(relatedModel, 'name_get', [[m2oId]]);
+                        if (nameGetResult.length > 0 && nameGetResult[0]) {
+                            finalDisplayValue = nameGetResult[0]; // Should be [id, name]
+                        } else {
+                            // name_get returned empty or invalid, use ID and currentNameFromRead if available
+                            finalDisplayValue = [m2oId, currentNameFromRead || `(ID: ${m2oId} - Name Not Found)`](m2oId, currentNameFromRead || `(ID: ${m2oId} - Name Not Found)`);
+                        }
+                    } catch (nameGetError) {
+                        console.warn(`name_get for ${relatedModel} ID ${m2oId} failed:`, nameGetError);
+                        const errorMsg = nameGetError.message?.data?.message || nameGetError.message || 'Name Error';
 
-            } catch (error) {
-                console.error(`Error loading name for ${fieldKey}:`, error);
-                newRecordFields = [...this.state.recordFields];
-                const errorFieldData = { ...newRecordFields[fieldIndex], value: `(${error.message || 'Error'})`, isLoading: false, isLoaded: true, accessError: true };
-                newRecordFields[fieldIndex] = errorFieldData;
-                this.state.recordFields = newRecordFields;
-                this.notification.add(`Failed to load name for ${fieldKey}.`, { type: 'danger' });
-            }
+                        if (nameGetError.message?.data?.name === 'builtins.AttributeError' && errorMsg.includes('does not exist')) {
+                            // This is the specific error: name_get doesn't exist. Use ID and previously read name (if any).
+                            finalDisplayValue = [m2oId, currentNameFromRead || `(ID: ${m2oId} - N/A)`](m2oId, currentNameFromRead || `(ID: ${m2oId} - N/A)`);
+                            console.log(`Method ${relatedModel}.name_get does not exist. Using ID or previously read name.`);
+                        } else if (nameGetError.message?.data?.name?.includes('AccessError')) {
+                            accessErrorOccurred = true;
+                            finalDisplayValue = `(Access Denied to ${relatedModel})`;
+                        } else {
+                            // Other name_get error
+                            finalDisplayValue = [m2oId, currentNameFromRead || `(ID: ${m2oId} - ${errorMsg.substring(0, 30)})`](m2oId, currentNameFromRead || `(ID: ${m2oId} - ${errorMsg.substring(0, 30)})`);
+                        }
+                    }
+                } else if (accessErrorOccurred && !nameFoundByRead) {
+                    // If an access error occurred during read attempts and no name was found
+                    finalDisplayValue = `(Access Denied to ${relatedModel})`;
+                } else if (!nameFoundByRead && !finalDisplayValue) {
+                    // If no name was found by read, no name_get attempt, and no finalDisplayValue yet (e.g. m2oId existed but all reads failed silently)
+                    finalDisplayValue = [m2oId, currentNameFromRead || `(ID: ${m2oId} - Name Unavailable)`](m2oId, currentNameFromRead || `(ID: ${m2oId} - Name Unavailable)`);
+                }
+
+            } // End if (m2oId)
+
+            Object.assign(this.state.recordFields[fieldIndex], {
+                value: finalDisplayValue, // This will be [id, name_string] or false or an error string
+                isLoading: false,
+                isLoaded: true,
+                accessError: accessErrorOccurred, // Reflects if an access error was encountered
+                status: ''
+            });
+            this.state.recordFields = [...this.state.recordFields];
+
         }
 
-
-        async loadX2ManyCount(fieldKey) {
+                async loadX2ManyCount(fieldKey) {
             const fieldIndex = this.state.recordFields.findIndex(f => f.key === fieldKey);
-            if (fieldIndex === -1) return;
+            if (fieldIndex === -1) {
+                console.warn(`[SideBarDev loadX2ManyCount] Field ${fieldKey} not found in state.recordFields.`);
+                return;
+            }
 
-            let fieldData = { ...this.state.recordFields[fieldIndex] };
+            const fieldData = this.state.recordFields[fieldIndex];
             const def = fieldData.definition;
             const relatedModel = def.relation;
 
-            let newRecordFields_loading = [...this.state.recordFields];
-            fieldData.isLoading = true;
-            fieldData.accessError = false;
-            newRecordFields_loading[fieldIndex] = fieldData;
-            this.state.recordFields = newRecordFields_loading;
+            // Log the definition fetched from fields_get
+            console.log(`[SideBarDev loadX2ManyCount] Definition for field '${fieldKey}':`, JSON.parse(JSON.stringify(def)));
+            // Log current fieldData state
+            // console.log(`[SideBarDev loadX2ManyCount] Current fieldData for '${fieldKey}':`, JSON.parse(JSON.stringify(fieldData)));
 
-            console.log(`Loading count for ${fieldKey} (model: ${relatedModel})`);
+
+            Object.assign(this.state.recordFields[fieldIndex], { isLoading: true, accessError: false, status: '(Loading count...)' });
+            this.state.recordFields = [...this.state.recordFields]; // Trigger reactivity
+
+            const currentRecordId = this.state.currentRecordId;
+            const currentModel = this.state.currentModel;
+            const userContext = this.env?.user?.context || {};
+
+            console.log(`[SideBarDev loadX2ManyCount] Attempting to load count for field '${fieldKey}' (type: ${def.type}).`);
+            console.log(`  - Current Record: ${currentModel} / ID: ${currentRecordId}`);
+            console.log(`  - Related Model (for x2m): ${relatedModel}`);
+            console.log(`  - User Context:`, JSON.parse(JSON.stringify(userContext)));
+
 
             try {
-                let domain = [];
                 let count = 0;
-                // Usar this.state.currentModel y this.state.currentRecordId
-                const currentRecordId = this.state.currentRecordId;
-                const currentModel = this.state.currentModel;
-
 
                 if (def.type === 'one2many') {
                     const inverseField = def.relation_field || def.inverse_name;
-                    if (inverseField) {
-                        domain = [[inverseField, '=', currentRecordId]];
-                        count = await this.orm.call(relatedModel, 'search_count', [domain]);
-                    } else {
-                        console.warn(`Cannot determine inverse field for O2M field: ${fieldKey}.`);
-                        throw new Error("Inverse field not found");
+                    console.log(`  - o2m: Using inverse field '${inverseField}' on related model '${relatedModel}'.`);
+
+                    if (!inverseField) {
+                        console.error(`[SideBarDev loadX2ManyCount] CRITICAL: Inverse field (relation_field or inverse_name) is missing for o2m field '${fieldKey}'. Cannot build domain. Definition:`, def);
+                        throw new Error(`Inverse field not defined for o2m field '${fieldKey}'`);
                     }
+                    if (currentRecordId === null || currentRecordId === undefined) {
+                         console.error(`[SideBarDev loadX2ManyCount] CRITICAL: currentRecordId is null/undefined for o2m count. Field: ${fieldKey}`);
+                         throw new Error(`Current record ID is missing for o2m count of '${fieldKey}'`);
+                    }
+
+                    const domain = [[inverseField, '=', currentRecordId]];
+                    console.log(`  - o2m: Calling 'search_count' on '${relatedModel}' with domain:`, JSON.parse(JSON.stringify(domain)));
+
+                    count = await this.orm.call(
+                        relatedModel,
+                        'search_count',
+                        [domain],
+                        { context: userContext }
+                    );
+                    console.log(`  - o2m: 'search_count' result for '${fieldKey}': ${count}`);
+
                 } else if (def.type === 'many2many') {
-                    const m2mRead = await this.orm.call(currentModel, 'read', [[currentRecordId]], { fields: [fieldKey] });
-                    const ids = (m2mRead.length > 0 && Array.isArray(m2mRead[0][fieldKey])) ? m2mRead[0][fieldKey] : [];
-                    count = ids.length;
+                    console.log(`  - m2m: Reading field '${fieldKey}' from current model '${currentModel}' (ID: ${currentRecordId}).`);
+                    const readResult = await this.orm.call(
+                        currentModel,
+                        'read',
+                        [[currentRecordId]],
+                        {
+                            fields: [fieldKey],
+                            context: userContext
+                        }
+                    );
+
+                    if (readResult && readResult.length > 0 && readResult[0].hasOwnProperty(fieldKey)) {
+                        const relatedIDs = readResult[0][fieldKey];
+                        if (Array.isArray(relatedIDs)) {
+                            count = relatedIDs.length;
+                            console.log(`  - m2m: Field '${fieldKey}' has ${count} related IDs:`, JSON.parse(JSON.stringify(relatedIDs.slice(0,5))) ); // Log first 5
+                        } else {
+                            console.warn(`  - m2m: Field '${fieldKey}' on '${currentModel}' did not return an array. Value:`, relatedIDs);
+                            count = 0;
+                        }
+                    } else {
+                        console.warn(`  - m2m: Field '${fieldKey}' not found or empty in read result for ${currentModel}/${currentRecordId}. Result:`, readResult);
+                        count = 0;
+                    }
+                } else {
+                    console.warn(`[SideBarDev loadX2ManyCount] Field '${fieldKey}' is not of type one2many or many2many. Type: ${def.type}`);
+                    throw new Error(`Cannot load count for field type '${def.type}'`);
                 }
 
-                let newRecordFields_final = [...this.state.recordFields];
-                let finalFieldData = { ...newRecordFields_final[fieldIndex] };
-                finalFieldData.value = `${count} Records`;
-                finalFieldData.isLoading = false;
-                finalFieldData.isLoaded = true;
-                finalFieldData.accessError = false;
-                newRecordFields_final[fieldIndex] = finalFieldData;
-                this.state.recordFields = newRecordFields_final;
+                Object.assign(this.state.recordFields[fieldIndex], { value: `${count} Records`, isLoading: false, isLoaded: true, accessError: false, status: '' });
 
             } catch (error) {
-                console.error(`Error loading count for ${fieldKey}:`, error);
+                console.error(`[SideBarDev loadX2ManyCount] Error loading count for x2m field '${fieldKey}':`, error);
                 const errorMessage = error.message?.data?.message || error.message || 'Count Failed';
-                let newRecordFields_error = [...this.state.recordFields];
-                let errorFieldData = { ...newRecordFields_error[fieldIndex] };
-                errorFieldData.value = `(${errorMessage.split('\n')[0]})`;
-                errorFieldData.isLoading = false;
-                errorFieldData.isLoaded = true;
-                errorFieldData.accessError = true;
-                newRecordFields_error[fieldIndex] = errorFieldData;
-                this.state.recordFields = newRecordFields_error;
-                this.notification.add(`Failed to load count for ${fieldKey}.`, { type: 'danger' });
+                Object.assign(this.state.recordFields[fieldIndex], { value: `(${errorMessage.split('\n')[0]})`, isLoading: false, isLoaded: true, accessError: true, status: '' });
+                this.notification.add(`Failed to load count for '${def.string || fieldKey}': ${errorMessage}`, { type: 'danger' });
+            } finally {
+                this.state.recordFields = [...this.state.recordFields]; // Ensure reactivity
             }
         }
 
         startEdit(field) {
-            console.log("Starting edit for:", field.key, "Current value:", field.value);
             this.state.editingFieldKey = field.key;
+            let editVal = field.value;
             if (field.definition.type === 'many2one' && Array.isArray(field.value)) {
-                this.state.editingFieldValue = field.value[0];
+                editVal = field.value[0]; // Use ID for editing m2o
             } else if (field.definition.type === 'boolean') {
-                this.state.editingFieldValue = Boolean(field.value);
-            } else {
-                this.state.editingFieldValue = field.value;
+                editVal = Boolean(field.value);
             }
+            this.state.editingFieldValue = editVal;
+
             requestAnimationFrame(() => {
                 if (this.editInputRef.el) {
                     this.editInputRef.el.focus();
@@ -628,138 +645,167 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             const fieldKey = this.state.editingFieldKey;
             const fieldDef = this.state.fieldDefinitions[fieldKey];
             let newValue = this.state.editingFieldValue;
-            const currentModel = this.state.currentModel; // Usar del estado
-            const currentRecordId = this.state.currentRecordId; // Usar del estado
+            const currentModel = this.state.currentModel;
+            const currentRecordId = this.state.currentRecordId;
 
             if (fieldDef.required) {
-                if (fieldDef.type !== 'boolean' && !newValue && newValue !== 0) { // Permitir 0 para numéricos
-                    this.notification.add(`Field "${fieldKey}" is required.`, { type: 'danger' });
+                let isValueEffectivelyEmpty = (newValue === null || newValue === '' || newValue === false);
+                if (fieldDef.type === 'boolean') isValueEffectivelyEmpty = false; // boolean 'false' is a valid value
+                if (fieldDef.type === 'integer' || fieldDef.type === 'float' || fieldDef.type === 'monetary') {
+                    if (newValue === 0) isValueEffectivelyEmpty = false;
+                }
+                if (isValueEffectivelyEmpty && !(fieldDef.type === 'many2one' && newValue === false)) {
+                    this.notification.add(`Field "${fieldDef.string || fieldKey}" is required.`, { type: 'danger' });
                     return;
                 }
             }
+
             try {
                 if (fieldDef.type === 'integer') {
-                    newValue = newValue === '' || newValue === null ? null : parseInt(newValue, 10);
+                    newValue = (newValue === '' || newValue === null) ? null : parseInt(newValue, 10);
                     if (isNaN(newValue) && newValue !== null) throw new Error("Invalid integer");
                 } else if (fieldDef.type === 'float' || fieldDef.type === 'monetary') {
-                    newValue = newValue === '' || newValue === null ? null : parseFloat(newValue);
+                    newValue = (newValue === '' || newValue === null) ? null : parseFloat(newValue);
                     if (isNaN(newValue) && newValue !== null) throw new Error("Invalid number");
                 } else if (fieldDef.type === 'many2one') {
-                    newValue = newValue === '' || newValue === null ? false : parseInt(newValue, 10);
-                    if (isNaN(newValue) && newValue !== false) throw new Error("Invalid ID for Many2one");
+                    newValue = (newValue === '' || newValue === null || newValue === undefined) ? false : parseInt(newValue, 10);
+                    if (isNaN(newValue) && newValue !== false) throw new Error("Invalid ID (must be integer or empty)");
                 }
             } catch (parseError) {
-                console.error("Parsing error:", parseError);
-                this.notification.add(`Invalid value format for ${fieldDef.type} field "${fieldKey}".`, { type: 'danger' });
+                this.notification.add(`Invalid value for ${fieldDef.type} "${fieldKey}": ${parseError.message}`, { type: 'danger' });
                 return;
             }
 
             this.state.isSavingEdit = true;
             try {
                 await this.orm.call(currentModel, 'write', [[currentRecordId], { [fieldKey]: newValue }]);
-                this.notification.add(`Field "${fieldKey}" saved.`, { type: 'success' });
+                this.notification.add(`Field "${fieldDef.string || fieldKey}" saved.`, { type: 'success' });
 
                 const fieldIndex = this.state.recordFields.findIndex(f => f.key === fieldKey);
                 if (fieldIndex > -1) {
-                    if (fieldDef.type === 'many2one' && newValue !== false) {
-                        // Para m2o, lo ideal es forzar recarga o hacer name_get
-                        // this.state.recordFields[fieldIndex].value = [newValue, `(ID: ${newValue} - Reload field)`](newValue, `(ID: ${newValue} - Reload field)`);
-                        await this.loadMany2oneName(fieldKey); // Recargar el nombre
+                    if (fieldDef.type === 'many2one') {
+                        // After saving an ID, we need to reload its name for display
+                        this.state.recordFields[fieldIndex].value = newValue; // Store the ID or false
+                        this.state.recordFields[fieldIndex].isLoaded = false; // Mark as not loaded to trigger name_get
+                        this.state.recordFields[fieldIndex].accessError = false;
+                        await this.loadMany2oneName(fieldKey); // This will update isLoaded and value again
                     } else {
                         this.state.recordFields[fieldIndex].value = newValue;
+                        this.state.recordFields[fieldIndex].isLoaded = true;
+                        this.state.recordFields[fieldIndex].accessError = false;
                     }
-                    // Forzar actualización de isLoaded para que getDisplayValue lo re-evalúe
-                    this.state.recordFields[fieldIndex].isLoaded = true;
-                    this.state.recordFields[fieldIndex].accessError = false; // Asumir que ya no hay error de acceso
+                    this.state.recordFields = [...this.state.recordFields];
                 }
                 this.cancelEdit();
             } catch (error) {
-                console.error("Error saving field:", error);
-                const errorMessage = error.data?.message || error.message || "Unknown error";
+                const errorMessage = error.data?.message || error.message?.data?.message || error.message || "Unknown error";
                 this.notification.add(`Error saving "${fieldKey}": ${errorMessage}`, { type: 'danger', sticky: true });
+            } finally {
                 this.state.isSavingEdit = false;
             }
         }
 
         async getReports() {
-            this.clearOutput(true);
-            // Usar this.state.currentModel y this.state.currentRecordId
+            this.state.recordFields = []; // Clear fields when switching to reports
+            this.state.reports = [];
+            this.state.showRunModelMethod = false;
+            this.state.showingX2ManyListFor = null;
+
+
             const model = this.state.currentModel;
             const recordId = this.state.currentRecordId;
-
             if (!model || recordId === null) {
                 this.notification.add("No active record to get reports for.", { type: 'warning' });
                 return;
             }
-
             try {
-                const reportsData = await this.orm.call(
-                    'ir.actions.report',
-                    'search_read',
-                    [],
-                    {
-                        domain: [['model', '=', model]],
-                        fields: ['name', 'model', 'report_name', 'report_type'],
-                        limit: 10 // O un límite razonable
-                    }
-                );
-
+                const reportsData = await this.orm.call('ir.actions.report', 'search_read', [], {
+                    domain: [['model', '=', model]], fields: ['name', 'report_name', 'report_type'],
+                });
                 this.state.reports = reportsData.map(report => ({
-                    ...report,
-                    url: `/report/pdf/${report.report_name}/${recordId}`
+                    ...report, url: `/report/pdf/${report.report_name}/${recordId}`
                 }));
-
+                if (!reportsData.length) this.notification.add("No reports found for this model.", { type: 'info' });
             } catch (error) {
-                console.error("Error fetching reports", error);
                 this.notification.add("Failed to fetch reports.", { type: 'danger' });
             }
         }
 
         closeSideBar() {
             this.state.isVisible = false;
+            // Optionally preserve state or clear it:
+            // this.clearOutput(false); // This would reset everything
         }
 
         openSideBar() {
             this.state.isVisible = true;
+            // useEffect will handle loading data if necessary when isVisible becomes true
+            // and the sidebar is at its root state.
+            // If sidebar is opened and already has a navigation context, it should just display that.
+            if (this.state.navigationStack.length === 0 && !this.state.showingX2ManyListFor) {
+                if (this.state.currentModel && this.state.currentRecordId !== null && this.state.recordFields.length === 0 && !this.state.showRunModelMethod) {
+                    console.log("[SideBarDev openSideBar] Opening, no field data, calling getRecordValues");
+                    this.getRecordValues(); // Load fields if this "tab" should be active
+                } else if (this.state.showRunModelMethod && !this.state.modelMethodPreview) {
+                    this.updateModelMethodPreview(); // Update preview if method tab is active
+                }
+            }
         }
 
         toggleSideBar() {
             this.state.isVisible = !this.state.isVisible;
             if (this.state.isVisible) {
-                if (this.state.currentModel && this.state.currentRecordId !== null) {
-                    // this.getRecordValues();
-                }
+                this.openSideBar();
             } else {
-                this.clearOutput();
+                this.closeSideBar();
             }
         }
 
         getDisplayValue(field) {
-            if (field.accessError) { return field.value; }
-            if (field.isLoading) { return '(Loading...)'; }
-            if (!field.isLoaded) {
+            if (field.accessError) return field.value; // Show error message
+            if (field.isLoading && !field.isLoaded) return '(Loading...)';
+            // For fields like M2O or X2M, if !isLoaded but status is present, show status
+            if (!field.isLoaded && field.status && (field.definition.type === 'many2one' || ['one2many', 'many2many'].includes(field.definition.type))) {
+                return field.status;
+            }
+            if (!field.isLoaded && field.definition.type !== 'binary' && !field.definition.related) {
                 return field.status || '(Not loaded)';
             }
+
             const value = field.value;
             const def = field.definition;
+
             if (value === false && def.type !== 'boolean') return '(empty)';
             if (value === null || value === undefined) {
                 if (['many2one', 'one2many', 'many2many'].includes(def.type)) return '(empty)';
-                return '';
+                return ''; // Empty string for other types
             }
-            if (def.type === 'many2one' && Array.isArray(value)) { return value[1] || `(ID: ${value[0]})`; }
-            if (['one2many', 'many2many'].includes(def.type)) { return String(value); }
-            if (def.type === 'boolean') { return value ? '✔️' : '❌'; }
+
+            if (def.type === 'many2one') {
+                if (Array.isArray(value)) return value[1] || `(ID: ${value[0]})`;
+                if (typeof value === 'number') return `(ID: ${value} - Click 🔄)`; // ID only, name not loaded
+                return value === false ? '(empty)' : String(value);
+            }
+            if (['one2many', 'many2many'].includes(def.type)) {
+                return { type: 'x2many', countDisplay: String(value || field.status || '(empty)'), fieldKey: field.key, fieldDefinition: def };
+            }
+            if (def.type === 'boolean') return value ? '✔️' : '❌';
             if (def.type === 'selection' && def.selection) {
                 const match = def.selection.find(s => s[0] === value);
                 return match ? match[1] : String(value);
             }
-            if (def.type === 'binary') { return String(value); }
+            if (def.type === 'binary' && def.related) return '(Related Binary)';
+            if (def.type === 'binary') return '(Binary Data)';
+
             return String(value);
         }
 
         runModelMethodOpt() {
-            this.clearOutput(true);
+            this.state.recordFields = [];
+            this.state.reports = [];
+            this.state.showingX2ManyListFor = null;
+            this.state.isLoadingFields = false; // Stop any field loading
+
             this.state.showRunModelMethod = true;
             this.loadRunMethodHistory();
             this.updateModelMethodPreview();
@@ -769,35 +815,35 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
         }
 
         updateModelMethodPreview() {
-            // Usar this.state.currentModel y this.state.currentRecordId
+            if (!this.state.showRunModelMethod) return;
+
             const model = this.state.currentModel || 'your.model';
             const method = this.state.modelMethodName.trim() || 'your_method';
             const recordId = this.state.currentRecordId;
             let argsString = this.state.modelMethodArgs.trim();
             let kwargsString = this.state.modelMethodKwargs.trim();
 
-            try { argsString = JSON.stringify(JSON.parse(argsString || '[]'), null, 2); } catch (e) { /* usa el string original */ }
-            try { kwargsString = JSON.stringify(JSON.parse(kwargsString || '{}'), null, 2); } catch (e) { /* usa el string original */ }
+            try { argsString = JSON.stringify(JSON.parse(argsString || '[]'), null, 2); } catch (e) { /* use original */ }
+            try { kwargsString = JSON.stringify(JSON.parse(kwargsString || '{}'), null, 2); } catch (e) { /* use original */ }
 
-            let finalArgsArrayString = '[]';
+            let finalArgsArrayString = argsString; // Default to user-provided args
             if (recordId !== null && recordId !== undefined) {
                 try {
-                    const userArgs = JSON.parse(argsString || '[]');
-                    if (!Array.isArray(userArgs)) throw new Error("Args not an array");
+                    // Parse the raw input string for user arguments
+                    const userArgs = JSON.parse(this.state.modelMethodArgs.trim() || '[]');
+                    if (!Array.isArray(userArgs)) throw new Error("User args not an array");
                     finalArgsArrayString = JSON.stringify([[recordId], ...userArgs], null, 2);
                 } catch (e) {
-                    finalArgsArrayString = `[[${recordId}], /* Invalid user args format */]`;
+                    finalArgsArrayString = `[[${recordId}] /* , ... (Error parsing user args: ${e.message}) */ ]`;
                 }
-            } else {
-                finalArgsArrayString = argsString;
             }
 
-            this.state.modelMethodPreview = `
-await this.env.services.orm.call(
-   "${model}",
-   "${method}",
-   ${finalArgsArrayString},
-   ${kwargsString}
+            this.state.modelMethodPreview =
+                `await this.env.services.orm.call(
+    "${model}",
+    "${method}",
+    ${finalArgsArrayString},
+    ${kwargsString}
 );`;
         }
 
@@ -805,63 +851,44 @@ await this.env.services.orm.call(
             if (!this.state.modelMethodPreview) return;
             navigator.clipboard.writeText(this.state.modelMethodPreview.trim())
                 .then(() => this.notification.add("ORM call preview copied!", { type: "success" }))
-                .catch(err => {
-                    console.error('Error copying text: ', err);
-                    this.notification.add("Failed to copy preview.", { type: "danger" });
-                });
+                .catch(err => this.notification.add("Failed to copy preview.", { type: "danger" }));
         }
 
         async runModelMethod() {
             const methodName = this.state.modelMethodName.trim();
-            // Usar this.state.currentModel y this.state.currentRecordId
             const model = this.state.currentModel;
             const recordId = this.state.currentRecordId;
-            const argsString = this.state.modelMethodArgs.trim();
-            const kwargsString = this.state.modelMethodKwargs.trim();
-
+            const rawArgsString = this.state.modelMethodArgs.trim();
+            const rawKwargsString = this.state.modelMethodKwargs.trim();
 
             if (!methodName) {
-                this.notification.add("Method name is required.", { type: 'warning' });
-                return;
+                this.notification.add("Method name is required.", { type: 'warning' }); return;
             }
-            if (!model) {
-                this.notification.add("Current model is not available.", { type: 'warning' });
-                return;
+            // Allow calls on model without ID (e.g. create, search)
+            if (!model && recordId !== null) { // if ID exists, model must too
+                this.notification.add("Current model is not available with a record ID.", { type: 'warning' }); return;
+            } else if (!model && recordId === null) {
+                // This is okay for model-level methods like search, name_search, create
             }
 
-            let args = [];
-            let kwargs = {};
 
+            let args = []; let kwargs = {};
             try {
-                const argsInputValue = this.state.modelMethodArgs.trim();
-                if (argsInputValue) {
-                    args = JSON.parse(argsString || '[]');
-                    if (!Array.isArray(args)) throw new Error("Positional arguments must be a JSON array.");
-                }
-            } catch (error) {
-                this.state.modelMethodOutput = `Invalid JSON format for positional arguments:\n${error.message}`;
-                this.state.modelMethodOutputIsError = true;
-                this.notification.add("Invalid JSON for positional arguments.", { type: 'danger' });
-                return;
+                if (rawArgsString) args = JSON.parse(rawArgsString);
+                if (!Array.isArray(args)) throw new Error("Positional arguments must be a JSON array.");
+            } catch (e) {
+                this.state.modelMethodOutput = `Invalid JSON for positional arguments: ${e.message}`;
+                this.state.modelMethodOutputIsError = true; return;
             }
             try {
-                const kwargsInputValue = this.state.modelMethodKwargs.trim();
-                if (kwargsInputValue) {
-                    kwargs = JSON.parse(kwargsString || '{}');
-                    if (typeof kwargs !== "object" || Array.isArray(kwargs) || kwargs === null) {
-                        throw new Error("Keyword arguments must be a JSON object.");
-                    }
-                }
-            } catch (error) {
-                this.state.modelMethodOutput = `Invalid JSON format for keyword arguments:\n${error.message}`;
-                this.state.modelMethodOutputIsError = true;
-                this.notification.add("Invalid JSON for keyword arguments.", { type: 'danger' });
-                return;
+                if (rawKwargsString) kwargs = JSON.parse(rawKwargsString);
+                if (typeof kwargs !== "object" || Array.isArray(kwargs)) throw new Error("Keyword arguments must be a JSON object.");
+            } catch (e) {
+                this.state.modelMethodOutput = `Invalid JSON for keyword arguments: ${e.message}`;
+                this.state.modelMethodOutputIsError = true; return;
             }
 
-            if (model && methodName) {
-                this.addToRunMethodHistory(model, methodName, argsString, kwargsString);
-            }
+            if (model && methodName) this.addToRunMethodHistory(model, methodName, rawArgsString, rawKwargsString);
 
             const callArgs = (recordId !== null && recordId !== undefined) ? [[recordId], ...args] : [...args];
 
@@ -872,26 +899,118 @@ await this.env.services.orm.call(
             try {
                 const result = await this.orm.call(model, methodName, callArgs, kwargs);
                 this.state.modelMethodOutput = JSON.stringify(result, null, 2);
-                this.state.modelMethodOutputIsError = false;
+                this.notification.add(`Method ${methodName} executed.`, { type: 'success' });
             } catch (error) {
-                console.error("Error calling model method:", error);
-                let errorObj = error;
-                if (error.message && error.message.data) {
-                    errorObj = {
-                        message: error.message.data.message,
-                        debug: error.message.data.debug,
-                        name: error.message.data.name,
-                        arguments: error.message.data.arguments,
-                        context: error.context,
-                    };
-                } else if (error instanceof Error) {
-                    errorObj = { name: error.name, message: error.message, stack: error.stack };
-                }
-                this.state.modelMethodOutput = JSON.stringify(errorObj, null, 2);
+                let errorObj = error.message && error.message.data ? error.message.data : { name: error.name, message: error.message, stack: error.stack };
+                this.state.modelMethodOutput = JSON.stringify(errorObj, Object.getOwnPropertyNames(errorObj), 2);
                 this.state.modelMethodOutputIsError = true;
                 this.notification.add(`Error executing method: ${errorObj.message || 'Unknown error'}`, { type: 'danger', sticky: true });
             } finally {
                 this.state.isModelMethodRunning = false;
+            }
+        }
+
+        async showX2ManyRecords(fieldKey, fieldDefinition) {
+            if (!this.state.currentModel || this.state.currentRecordId === null) return;
+
+            // Clear other "tabs"
+            this.state.recordFields = [];
+            this.state.reports = [];
+            this.state.showRunModelMethod = false;
+            this.state.isLoadingFields = false;
+
+            this.state.showingX2ManyListFor = {
+                parentModel: this.state.currentModel,
+                parentId: this.state.currentRecordId,
+                fieldKey: fieldKey,
+                fieldDefinition: fieldDefinition,
+            };
+            this.state.x2manyRecords = [];
+            this.state.isLoadingX2Many = true;
+
+            try {
+                const relatedModel = fieldDefinition.relation;
+                const parentData = await this.orm.call(this.state.currentModel, "read", [[this.state.currentRecordId]], { fields: [fieldKey] });
+                const relatedIDs = (parentData && parentData[0] && parentData[0][fieldKey]) ? parentData[0][fieldKey] : [];
+
+                if (relatedIDs.length > 0) {
+                    const recordsData = await this.orm.call(relatedModel, "search_read", [[['id', 'in', relatedIDs]]], { fields: ['id', 'display_name'], limit: 50 });
+                    this.state.x2manyRecords = recordsData;
+                } else {
+                    this.notification.add(`No records found for ${fieldDefinition.string || fieldKey}.`, { type: "info" });
+                }
+            } catch (error) {
+                this.notification.add(`Failed to load records for ${fieldKey}: ${error.message?.data?.message || error.message}`, { type: "danger" });
+            } finally {
+                this.state.isLoadingX2Many = false;
+            }
+        }
+
+        navigateToRelatedRecord(relatedModel, relatedId, originFieldKey) {
+            this.state.navigationStack.push({
+                resModel: this.state.currentModel,
+                resId: this.state.currentRecordId,
+                isFormView: this.state.isFormView,
+                showingX2ManyListFor: this.state.showingX2ManyListFor ? { ...this.state.showingX2ManyListFor } : null,
+                x2manyRecords: this.state.showingX2ManyListFor ? [...this.state.x2manyRecords] : [],
+                recordFields: !this.state.showingX2ManyListFor ? [...this.state.recordFields] : [], // Save fields if coming from field view
+                fieldDefinitions: !this.state.showingX2ManyListFor ? { ...this.state.fieldDefinitions } : {},
+            });
+
+            this.state.showingX2ManyListFor = null; // Navigating away from x2m list (if we were on one)
+            this.state.x2manyRecords = [];
+            this.state.currentModel = relatedModel;
+            this.state.currentRecordId = relatedId;
+            this.state.isFormView = true; // Treat as a form view within sidebar
+
+            this.getRecordValues(); // This will load fields for the new (related) record
+        }
+
+        clearX2ManyView() { // "Back to Parent Fields" button
+            if (this.state.showingX2ManyListFor) {
+                // currentModel/Id are already the parent's.
+                this.state.showingX2ManyListFor = null;
+                this.state.x2manyRecords = [];
+                this.state.isLoadingX2Many = false;
+                this.getRecordValues(); // Reload parent's fields
+            }
+        }
+
+        navigateBack() { // General "Back" button using the stack
+            if (this.state.navigationStack.length > 0) {
+                const previousContext = this.state.navigationStack.pop();
+
+                this.state.currentModel = previousContext.resModel;
+                this.state.currentRecordId = previousContext.resId;
+                this.state.isFormView = previousContext.isFormView;
+
+                // Clear current views before restoring
+                this.state.recordFields = [];
+                this.state.reports = [];
+                this.state.showRunModelMethod = false;
+                this.state.isLoadingFields = false;
+                this.state.showingX2ManyListFor = null;
+                this.state.x2manyRecords = [];
+
+
+                if (previousContext.showingX2ManyListFor) { // Restoring an x2many list view
+                    this.state.showingX2ManyListFor = previousContext.showingX2ManyListFor;
+                    this.state.x2manyRecords = previousContext.x2manyRecords;
+                    this.state.isLoadingX2Many = false;
+                } else { // Restoring a record field view
+                    this.state.recordFields = previousContext.recordFields;
+                    this.state.fieldDefinitions = previousContext.fieldDefinitions;
+                    // If fields were not saved or empty, reload (though typically they should be saved)
+                    if (!this.state.recordFields || this.state.recordFields.length === 0) {
+                        this.getRecordValues();
+                    }
+                }
+            } else {
+                // At stack bottom, try to revert to main form context if different
+                const mainFormCtx = this.activeRecordService.getMainFormContext();
+                if (mainFormCtx && (this.state.currentModel !== mainFormCtx.resModel || this.state.currentRecordId !== mainFormCtx.resId)) {
+                    this.revertToMainFormContext();
+                }
             }
         }
     }
@@ -899,18 +1018,9 @@ await this.env.services.orm.call(
     SideBarDev.template = "odoo_dev.SideBar";
     SideBarDev.components = { FieldXpath };
 
-    // Registrar el componente para que MainComponentsContainer lo renderice
     registry.category("main_components").add("SideBarDev", {
         Component: SideBarDev,
     });
 
-    // whenReady(() => {
-    //     console.log("Mounting SideBarDev component");
-    //     console.log(templates);
-    //     mountComponent(SideBarDev, document.body, {templates});
-    // });
-
-
     return SideBarDev;
-
 });
