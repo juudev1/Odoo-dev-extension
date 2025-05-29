@@ -124,7 +124,6 @@
                 t-ref="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th t-if="hasSelectors"
                             class="o_list_record_selector o_list_controller align-middle pe-1 cursor-pointer"
                             tabindex="-1" t-on-keydown="(ev) => this.onCellKeydown(ev)"
@@ -244,20 +243,17 @@
             t-on-touchend="() => this.onRowTouchEnd(record)"
             t-on-touchmove="() => this.onRowTouchMove(record)"
         >
-        <td class="o_list_controller o_list_actions_cell text-center">
-            <button class="btn"
-                    title="Open Dev Sidebar"
-                    t-on-click.prevent.stop="() => this.onRecordClicked(record)">
-                <i class="fa fa-bug"/> <!-- O cualquier otro icono -->
-            </button>
-        </td>
-            
-            <td t-on-keydown="(ev) => this.onCellKeydown(ev, group, record)" t-if="hasSelectors" class="o_list_record_selector user-select-none" t-on-click.stop="() => this.toggleRecordSelection(record)" tabindex="-1">
-                <CheckBox disabled="!_canSelectRecord" value="record.selected" onChange.alike="() => this.toggleRecordSelection(record)" />
+            <td t-on-keydown="(ev) => this.onCellKeydown(ev, group, record)" t-if="hasSelectors"
+                class="o_list_record_selector user-select-none"
+                t-on-click.stop="() => this.toggleRecordSelection(record)" tabindex="-1">
+                <CheckBox disabled="!_canSelectRecord" value="record.selected"
+                    onChange.alike="() => this.toggleRecordSelection(record)" />
             </td>
+            <t t-set="devButtonAdded" t-value="false" />
             <t t-foreach="getColumns(record)" t-as="column" t-key="column.id">
                 <t t-if="column.type === 'field'">
-                    <t t-set="isInvisible" t-value="evalInvisible(column.invisible, record) or !(column.name in record.data)"/>
+                    <t t-set="isInvisible"
+                        t-value="evalInvisible(column.invisible, record) or !(column.name in record.data)" />
                     <td t-on-keydown="(ev) => this.onCellKeydown(ev, group, record)"
                         class="o_data_cell cursor-pointer"
                         t-att-class="getCellClass(column, record)"
@@ -266,14 +262,32 @@
                         t-att-data-tooltip="!isInvisible ? getCellTitle(column, record) : false"
                         data-tooltip-delay="1000"
                         t-on-click="(ev) => this.onCellClicked(record, column, ev)" tabindex="-1">
+                        <button t-if="!devButtonAdded" class="btn"
+                            title="Open Dev Sidebar"
+                            t-on-click.prevent.stop="() => this.onRecordClicked(record)">
+                            <i class="fa fa-bug" /> <!-- O cualquier otro icono -->
+                        </button>
+
                         <t t-if="!isInvisible">
-                            <t t-if="canUseFormatter(column, record)" t-out="getFormattedValue(column, record)"/>
-                            <Field t-else="" name="column.name" record="record" type="column.widget" class="getFieldClass(column)" fieldInfo="column" t-props="getFieldProps(record, column)"/>
+                            <t t-if="canUseFormatter(column, record)"
+                                t-out="getFormattedValue(column, record)" />
+                            <Field t-else="" name="column.name" record="record" type="column.widget"
+                                class="getFieldClass(column)" fieldInfo="column"
+                                t-props="getFieldProps(record, column)" />
                         </t>
                     </td>
                 </t>
                 <t t-if="column.type === 'button_group'">
-                    <td t-on-keydown="(ev) => this.onCellKeydown(ev, group, record)" class="o_data_cell cursor-pointer" t-att-class="getCellClass(column, record)" t-on-click="(ev) => this.onButtonCellClicked(record, column, ev)" tabindex="-1">
+                    <td t-on-keydown="(ev) => this.onCellKeydown(ev, group, record)"
+                        class="o_data_cell cursor-pointer"
+                        t-att-class="getCellClass(column, record)"
+                        t-on-click="(ev) => this.onButtonCellClicked(record, column, ev)"
+                        tabindex="-1">
+                        <button t-if="!devButtonAdded" class="btn"
+                            title="Open Dev Sidebar"
+                            t-on-click.prevent.stop="() => this.onRecordClicked(record)">
+                            <i class="fa fa-bug" /> <!-- O cualquier otro icono -->
+                        </button>
                         <t t-foreach="column.buttons" t-as="button" t-key="button.id">
                             <ViewButton t-if="!evalInvisible(button.invisible, record)"
                                 className="button.className"
@@ -292,9 +306,15 @@
                 </t>
                 <t t-if="column.type === 'widget'">
                     <td class="o_data_cell" t-att-class="getCellClass(column, record)">
-                        <Widget t-props="column.props" record="record"/>
+                        <button t-if="!devButtonAdded" class="btn list-dev-button"
+                            title="Open Dev Sidebar"
+                            t-on-click.prevent.stop="() => this.onRecordClicked(record)">
+                            <i class="fa fa-bug" /> <!-- O cualquier otro icono -->
+                        </button>
+                        <Widget t-props="column.props" record="record" />
                     </td>
                 </t>
+                <t t-set="devButtonAdded" t-value="true" />
             </t>
 
             <t t-if="props.onOpenFormView">
@@ -312,7 +332,8 @@
             </t>
 
             <t t-set="useUnlink" t-value="'unlink' in activeActions" />
-            <t t-set="hasX2ManyAction" t-value="isX2Many and (useUnlink ? activeActions.unlink : activeActions.delete)" />
+            <t t-set="hasX2ManyAction"
+                t-value="isX2Many and (useUnlink ? activeActions.unlink : activeActions.delete)" />
             <t t-if="displayOptionalFields or hasX2ManyAction">
                 <t t-if="hasX2ManyAction">
                     <td class="o_list_record_remove text-center"

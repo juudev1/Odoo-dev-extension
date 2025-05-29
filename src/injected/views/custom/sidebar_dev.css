@@ -126,10 +126,6 @@
   width: 100%;
 }
 
-.dev-sidebar-option:hover {
-  background-color: #f9f9f9;
-}
-
 .dev-sidebar-item {
   display: flex;
   gap: 10px;
@@ -596,4 +592,9 @@ textarea.code-input {
 .refresh-relation-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.list-dev-button{
+  padding: 0;
+  margin-left: 3px;
 }
