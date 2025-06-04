@@ -1,5 +1,5 @@
 
-odoo.define('odoo_dev.view_button', ['@web/views/view_button/view_button', '@web/core/utils/patch'], function (require) {
+odoo.define('odoo_dev.view_button', ['@web/views/view_button/view_button', '@web/core/utils/patch', 'odoo_dev.version_utils'], function (require) {
     const { ViewButton } = require('@web/views/view_button/view_button');
     const { patch } = require("@web/core/utils/patch");
     const odooVersion = require('odoo_dev.version_utils');
