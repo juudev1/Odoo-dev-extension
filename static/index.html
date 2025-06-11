@@ -5,47 +5,179 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Odoo Dev Tools</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Agregamos Google Fonts -->
+  <script src="./tailwindcss_cdn_405.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            'inter': ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
 </head>
 
-<body>
-  <div class="container">
-    <header>
-      <h1>Odoo Dev Tools</h1>
-      <p class="subtitle">Herramientas de desarrollo para Odoo</p>
+<body class="bg-gray-50 font-inter min-h-screen" style="width: 500px; margin: 0 auto;">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <header class="text-center mb-12">
+      <div class="flex items-center justify-center mb-4">
+        <svg class="w-10 h-10 text-purple-600 mr-3" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+        <h1 class="text-4xl font-bold text-gray-900">Odoo Dev Tools</h1>
+      </div>
+      <p class="text-xl text-gray-600">Herramientas de desarrollo para Odoo</p>
     </header>
 
-    <main class="upload-section">
-      <div class="card">
-        <h2>Subir Imagen</h2>
-        <div class="upload-area" id="uploadArea">
-          <label for="uploadImage" class="upload-label">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <span id="uploadText">Seleccionar imagen</span>
-            <span class="file-info" id="fileInfo"></span>
+    <main class="space-y-8">
+      <!-- Extension Toggle -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">Estado de la Extensión</h2>
+            <p class="text-sm text-gray-600">Habilita o deshabilita las herramientas de desarrollo</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="extensionEnabledToggle" class="sr-only peer">
+            <div
+              class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600">
+            </div>
+            <span class="ml-3 text-sm font-medium text-gray-700" id="toggleLabel">Deshabilitado</span>
           </label>
-          <input type="file" id="uploadImage" accept="image/*" class="hidden">
         </div>
-        <button id="saveImage" class="button-primary" disabled>Guardar Imagen</button>
-      </div>
+      </section>
 
-      <div class="preview-card">
-        <h3>Vista previa</h3>
-        <div class="image-preview">
-          <img id="previewImage" src="/placeholder.svg" alt="No hay imagen guardada">
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">Fondo Personalizado</h2>
+            <p class="text-sm text-gray-600">Habilita o deshabilita la imagen de fondo subida.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="backgroundEnabledToggle" class="sr-only peer">
+            <div
+              class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600">
+            </div>
+            <span class="ml-3 text-sm font-medium text-gray-700" id="toggleLabel"
+              id="backgroundToggleLabel">Desactivado</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Upload Section -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-6">Subir Imagen</h2>
+
+        <div
+          class="upload-area border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors duration-200"
+          id="uploadArea">
+          <label for="uploadImage" class="cursor-pointer block">
+            <div class="space-y-4">
+              <div class="mx-auto w-16 h-16 text-gray-400">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="w-full h-full">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-lg font-medium text-gray-900" id="uploadText">Seleccionar imagen</p>
+                <p class="text-sm text-gray-500 mt-1">PNG, JPG, GIF hasta 10MB</p>
+                <p class="text-xs text-gray-400 mt-2" id="fileInfo"></p>
+              </div>
+            </div>
+          </label>
+          <input type="file" id="uploadImage" accept="image/*" class="hidden"
+            aria-label="Seleccionar archivo de imagen">
+        </div>
+
+        <div class="mt-6 flex gap-4">
+          <button id="saveImage"
+            class="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+            disabled>
+            <span class="flex items-center justify-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Guardar Imagen
+            </span>
+          </button>
+          <button id="clearImage"
+            class="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            style="display: none;">
+            Limpiar
+          </button>
+        </div>
+      </section>
+
+      <!-- Preview Section -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-xl font-semibold text-gray-900 mb-4">Vista Previa</h3>
+        <div class="bg-gray-50 rounded-lg p-8 min-h-64 flex items-center justify-center">
+          <div class="text-center" id="previewContainer">
+            <img id="previewImage" src="/placeholder.svg?height=200&width=300" alt="No hay imagen guardada"
+              class="max-w-full max-h-64 rounded-lg shadow-md mx-auto hidden">
+            <div id="placeholderText" class="text-gray-500">
+              <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p class="text-lg">No hay imagen guardada</p>
+              <p class="text-sm text-gray-400 mt-1">La imagen aparecerá aquí después de guardarla</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Info -->
+        <div id="imageInfo" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+          <h4 class="font-medium text-gray-900 mb-2">Información de la imagen</h4>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-600">Nombre:</span>
+              <span id="imageName" class="ml-2 font-medium"></span>
+            </div>
+            <div>
+              <span class="text-gray-600">Tamaño:</span>
+              <span id="imageSize" class="ml-2 font-medium"></span>
+            </div>
+            <div>
+              <span class="text-gray-600">Tipo:</span>
+              <span id="imageType" class="ml-2 font-medium"></span>
+            </div>
+            <div>
+              <span class="text-gray-600">Dimensiones:</span>
+              <span id="imageDimensions" class="ml-2 font-medium"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Status Messages -->
+      <div id="statusMessage" class="hidden fixed top-4 right-4 z-50 max-w-sm">
+        <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg id="statusIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p id="statusText" class="text-sm font-medium text-gray-900"></p>
+            </div>
+          </div>
         </div>
       </div>
     </main>
   </div>
+
   <script src="script.js"></script>
 </body>
 

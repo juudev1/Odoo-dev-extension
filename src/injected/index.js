@@ -1,7 +1,7 @@
 // src/injected/index.js
 import ExtensionCore from './core/extension-core.js';
 
-(async () => { // Wrap in an async IIFE to use await at top level
+async function initializeOdooDev() {
     "use strict";
 
     try {
@@ -9,7 +9,14 @@ import ExtensionCore from './core/extension-core.js';
         console.log("[Odoo Dev Index] Initializing ExtensionCore...");
         await ExtensionCore.init();
         window.ExtensionCore = ExtensionCore; // Make it globally available
-        console.log("[Odoo Dev Index] ExtensionCore initialized.");
+        console.log("[Odoo Dev Index] ExtensionCore initialized. Extension Enabled:", ExtensionCore.isEnabled);
+
+        if (!ExtensionCore.isEnabled) {
+            console.log("[Odoo Dev Index] Extension is disabled by configuration. Halting Odoo module injections.");
+            // Any previously injected elements/patches from a prior enabled state
+            // will be gone due to the page reload forced by contentScriptIsolated.js.
+            return;
+        }
 
         const extensionUrl = ExtensionCore.getUrl();
         const srcFolder = extensionUrl + "src/injected/";
@@ -82,19 +89,19 @@ import ExtensionCore from './core/extension-core.js';
                 "./services/active_record.js",
 
                 // ****** Components ******
-                "./views/custom/field_xpath.js",   
+                "./views/custom/field_xpath.js",
 
                 "./views/custom/sidebar_dev.js", // Antes que el form_controller.js para que se actualice el resModel
-                "./views/form/form_controller.js", 
+                "./views/form/form_controller.js",
                 // ****** Webclient Patches ******
                 "./webclient.js",
 
                 "./tooltip/js/tooltip.js",
-                
-                "./views/form/form_compiler.js",  
-                "./views/list/list_renderer.js",  
+
+                "./views/form/form_compiler.js",
+                "./views/list/list_renderer.js",
                 "./views/view_button/view_button.js",
-                "./views/field.js",                
+                "./views/field.js",
                 "./form_label.js"
             ];
 
@@ -114,4 +121,11 @@ import ExtensionCore from './core/extension-core.js';
     } catch (error) {
         console.error("[Odoo Dev Index] Critical error during extension initialization:", error);
     }
+}
+
+(async () => {
+    // The `REQUEST_EXTENSION_INIT` message will be sent by ExtensionCore.init()
+    // The response `EXTENSION_INIT` will be handled by ExtensionCore.init()'s promise.
+    // Then initializeOdooDev will run.
+    await initializeOdooDev();
 })();

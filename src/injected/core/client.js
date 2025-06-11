@@ -1,4 +1,51 @@
-// src/injected/core/client.js
+const ODOO_DEV_BACKGROUND_STYLE_ID = 'odoo-dev-custom-background-style';
+
+function applyOrRemoveBackgroundStyle() {
+    const existingStyleElement = document.getElementById(ODOO_DEV_BACKGROUND_STYLE_ID);
+
+    if (window.ExtensionCore && ExtensionCore.isEnabled && ExtensionCore.isBackgroundEnabled) {
+        // Extension is enabled AND background is enabled
+        if (ExtensionCore.extensionData && ExtensionCore.extensionData.backgroundImg) {
+            const imageSrc = ExtensionCore.extensionData.backgroundImg;
+            if (imageSrc) {
+                if (existingStyleElement) {
+                    // Update if URL changed, though not strictly necessary if URL is static from storage
+                    existingStyleElement.innerHTML = `
+                        .o_home_menu_background,
+                        .o_web_client.o_home_menu_background {
+                            background-image: url(${imageSrc}) !important;
+                        }
+                    `;
+                    console.log("[Odoo Dev Client] Background style updated.");
+                } else {
+                    console.log("[Odoo Dev Client] Applying background image:", imageSrc);
+                    const style = document.createElement('style');
+                    style.id = ODOO_DEV_BACKGROUND_STYLE_ID;
+                    // style.setAttribute('data-odoo-dev-tool', 'background-style'); // For generic cleanup
+                    style.innerHTML = `
+                        .o_home_menu_background,
+                        .o_web_client.o_home_menu_background {
+                            background-image: url(${imageSrc}) !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+            } else {
+                // No image URL, remove style if it exists
+                if (existingStyleElement) {
+                    existingStyleElement.remove();
+                    console.log("[Odoo Dev Client] Background image URL missing, removed style.");
+                }
+            }
+        }
+    } else {
+        // Extension disabled OR background specifically disabled
+        if (existingStyleElement) {
+            existingStyleElement.remove();
+            console.log("[Odoo Dev Client] Background disabled or extension disabled, removed style.");
+        }
+    }
+}
 
 // Create a promise that index.js can wait for
 window.odooDevClientReadyPromise = new Promise((resolveClientReady, rejectClientReady) => {
@@ -18,6 +65,8 @@ window.odooDevClientReadyPromise = new Promise((resolveClientReady, rejectClient
                 console.error(errorMessage);
                 return rejectClientReady(new Error(errorMessage));
             }
+
+            applyOrRemoveBackgroundStyle();
 
             console.log("[Odoo Dev Client] Loading templates and CSS:", resources.templates.length, "XML files,", resources.css.length, "CSS files.");
             await xmlBundle.loadTemplatesAndCSS(resources.templates, resources.css);

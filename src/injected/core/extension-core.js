@@ -2,61 +2,64 @@
 class ExtensionCore {
     static #extensionData = null;
     static #initialized = false;
-    static #resolveInitPromise = null; // Para resolver la promesa externamente
-    static #rejectInitPromise = null; // Para rechazar la promesa externamente
-    static #initPromise = null; // Guardar la promesa
-    static #timeoutId = null; // Guardar ID del timeout
+    static #resolveInitPromise = null;
+    static #rejectInitPromise = null;
+    static #initPromise = null;
+    static #timeoutId = null;
+    static #isEnabled = true; // Default, will be updated
 
     static init() {
-        if (this.#initialized) return Promise.resolve(this.#extensionData); // Ya inicializado
-        if (this.#initPromise) return this.#initPromise; // Ya está inicializando
+        if (this.#initialized) return Promise.resolve(this.#extensionData);
+        if (this.#initPromise) return this.#initPromise;
 
-        // Crear la promesa una sola vez
         this.#initPromise = new Promise((resolve, reject) => {
             this.#resolveInitPromise = resolve;
             this.#rejectInitPromise = reject;
 
-            // Configurar timeout
             this.#timeoutId = setTimeout(() => {
                 console.error('[ExtensionCore] Timeout waiting for EXTENSION_INIT message.');
-                this.#rejectInitPromise(new Error('Timeout waiting for extension URL'));
-                // Limpiar listener si hubo timeout
-                window.removeEventListener('message', this.#handleInitMessage);
-            }, 5000); // Aumentar timeout a 5 segundos por si acaso
+                this.#rejectInitPromise(new Error('Timeout waiting for extension data'));
+                window.removeEventListener('message', this.#handleInitMessageWrapper);
+            }, 5000);
 
-            // Añadir listener para la respuesta
-            window.addEventListener('message', this.#handleInitMessage);
+            // Use a wrapper function for the event listener so 'this' refers to ExtensionCore
+            window.addEventListener('message', this.#handleInitMessageWrapper);
 
-            // Enviar mensaje para solicitar la información
             console.log('[ExtensionCore] Requesting EXTENSION_INIT data...');
             window.postMessage({ type: 'REQUEST_EXTENSION_INIT' }, '*');
-
         });
-
         return this.#initPromise;
     }
 
-    // Función separada para manejar el mensaje y poder quitar el listener
-    static #handleInitMessage = (event) => {
-        // Solo procesar mensajes del tipo esperado y de la misma ventana
-        if (event.source === window && event.data && event.data.type === 'EXTENSION_INIT') {
-            console.log('[ExtensionCore] Received EXTENSION_INIT:', event.data.data);
-            clearTimeout(this.#timeoutId); // Cancelar el timeout
-            window.removeEventListener('message', this.#handleInitMessage); // Limpiar listener
+    // Wrapper to ensure 'this' context is correct for static method
+    static #handleInitMessageWrapper = (event) => {
+        this.#handleInitMessage(event);
+    }
 
-            this.#extensionData = event.data.data;
-            this.#initialized = true;
-            // Verificar que los resolvers existen antes de llamarlos
-            if (this.#resolveInitPromise) {
-                this.#resolveInitPromise(this.#extensionData);
+    static #handleInitMessage = (event) => {
+        if (event.source === window && event.data && (event.data.type === 'EXTENSION_INIT' || event.data.type === 'EXTENSION_INIT_ERROR')) {
+            clearTimeout(this.#timeoutId);
+            window.removeEventListener('message', this.#handleInitMessageWrapper);
+
+            if (event.data.type === 'EXTENSION_INIT_ERROR') {
+                console.error('[ExtensionCore] Received EXTENSION_INIT_ERROR:', event.data.error);
+                this.#initialized = false; // Mark as not initialized properly
+                if (this.#rejectInitPromise) {
+                    this.#rejectInitPromise(new Error(event.data.error || 'Failed to initialize extension data'));
+                }
             } else {
-                console.error('[ExtensionCore] Init promise resolver is missing!');
+                console.log('[ExtensionCore] Received EXTENSION_INIT:', event.data.data);
+                this.#extensionData = event.data.data;
+                this.#isEnabled = this.#extensionData.isEnabled !== false; // Update enabled state
+                this.#initialized = true;
+                if (this.#resolveInitPromise) {
+                    this.#resolveInitPromise(this.#extensionData);
+                }
             }
-            // Limpiar referencias a los resolvers
             this.#resolveInitPromise = null;
             this.#rejectInitPromise = null;
         }
-    } 
+    }
 
     static getUrl(path = '') {
         if (!this.#initialized) throw new Error('Extension not initialized');
@@ -64,6 +67,7 @@ class ExtensionCore {
     }
 
     static get resources() {
+        if (!this.#isEnabled) return { templates: [], css: [] }; // Return empty if disabled
         return {
             templates: [
                 this.getUrl('src/injected/views/list/list_renderer.xml'),
@@ -83,6 +87,13 @@ class ExtensionCore {
         return this.#extensionData;
     }
 
+    static get isEnabled() {
+        // Ensure init has run to get the latest state, but don't block indefinitely if init failed
+        if (!this.#initialized && this.#initPromise) {
+            console.warn("[ExtensionCore] isEnabled accessed before full initialization, relying on default or last known state.");
+        }
+        return this.#isEnabled;
+    }
 }
 
 export default ExtensionCore;

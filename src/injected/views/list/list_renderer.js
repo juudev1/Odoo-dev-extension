@@ -79,8 +79,8 @@ odoo.define('odoo_dev.ListRenderer', ['@web/views/list/list_renderer', '@web/cor
             }
         });
     } else if (odooVersion.isV17) {
-        ListRenderer.template = "odoo_dev.ListRenderer"; // Tu template principal de lista
-        ListRenderer.recordRowTemplate = "odoo_dev.ListRenderer.RecordRow"; // Tu template de fila
+        ListRenderer.template = "odoo_dev.ListRenderer17"; 
+        ListRenderer.recordRowTemplate = "odoo_dev.ListRenderer.RecordRow"; 
 
         patch(ListRenderer.prototype, {
             setup() {
@@ -152,7 +152,9 @@ odoo.define('odoo_dev.ListRenderer', ['@web/views/list/list_renderer', '@web/cor
             }
         });
     } else if (odooVersion.isV18) {
-        ListRenderer.template = "odoo_dev.ListRenderer18";
+        // ListRenderer.template = "odoo_dev.ListRenderer18";
+        ListRenderer.recordRowTemplate = "odoo_dev.ListRenderer.RecordRow18"; 
+
         patch(ListRenderer.prototype, {
             setup() {
                 super.setup();
