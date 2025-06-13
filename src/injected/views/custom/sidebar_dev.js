@@ -242,7 +242,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
         }
 
         async revertToMainFormContext() {
-            const mainFormContext = this.activeRecordService.getMainFormContext();
+            const mainFormContext = this.activeRecordService.getMainFormContext(); // 
             if (mainFormContext) {
                 console.log("[SideBarDev] Reverting to MainFormContext:", mainFormContext);
                 this.state.navigationStack = [];
@@ -255,6 +255,8 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 this.state.isFormView = mainFormContext.isFormView;
 
                 // Optionally, explicitly update activeRecordService if it didn't originate the change
+                // Si el modelo de la activeRecordService no coincide con el contexto principal
+                // O si el id no coincide entonces actualizamos el activeRecordService como el contexto principal
                 if (this.activeRecordService.state.resModel !== mainFormContext.resModel ||
                     this.activeRecordService.state.resId !== mainFormContext.resId) {
                     this.activeRecordService.setActiveRecord(
@@ -262,6 +264,8 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                         mainFormContext.resId,
                         true
                     );
+                    // Refrescamos los valores para el registro actual
+                    this.getRecordValues(); 
                 } else if (!this.state.isVisible) { // If already on main context but sidebar was closed
                     this.getRecordValues(); // Manually trigger if useEffect won't due to no state change
                 }
@@ -1072,6 +1076,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
 
         navigateBack() { // General "Back" button using the stack
             if (this.state.navigationStack.length > 0) {
+                console.log(`[SideBarDev navigateBack] Navigation stack has ${this.state.navigationStack.length} entries.`);
                 const previousContext = this.state.navigationStack.pop();
 
                 this.state.currentModel = previousContext.resModel;
@@ -1086,12 +1091,14 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 this.state.showingX2ManyListFor = null;
                 this.state.x2manyRecords = [];
 
-
+                // Si antes estábamos en un x2many list view, restauramos ese contexto
                 if (previousContext.showingX2ManyListFor) { // Restoring an x2many list view
                     this.state.showingX2ManyListFor = previousContext.showingX2ManyListFor;
                     this.state.x2manyRecords = previousContext.x2manyRecords;
                     this.state.isLoadingX2Many = false;
-                } else { // Restoring a record field view
+                } else { 
+                    console.log(`[SideBarDev navigateBack] Restoring to record fields view for ${this.state.currentModel}/${this.state.currentRecordId}. Calling getRecordValues.`);
+                    // Si no estábamos en un x2many list view, restauramos los campos del formulario
                     this.state.recordFields = previousContext.recordFields;
                     this.state.fieldDefinitions = previousContext.fieldDefinitions;
                     // If fields were not saved or empty, reload (though typically they should be saved)
