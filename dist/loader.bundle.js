@@ -215,18 +215,53 @@ function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 // src/injected/index.js
 
+function waitForOdooReady() {
+  return _waitForOdooReady.apply(this, arguments);
+}
+function _waitForOdooReady() {
+  _waitForOdooReady = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
+    var timeout,
+      _args2 = arguments;
+    return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+      while (1) switch (_context2.prev = _context2.next) {
+        case 0:
+          timeout = _args2.length > 0 && _args2[0] !== undefined ? _args2[0] : 15000;
+          return _context2.abrupt("return", new Promise(function (resolve, reject) {
+            var startTime = Date.now();
+            var interval = setInterval(function () {
+              if (typeof odoo !== 'undefined' && typeof odoo.define === 'function' && odoo.runtime && odoo.runtime.app && odoo.runtime.app.env) {
+                clearInterval(interval);
+                console.log('[Odoo Dev Index] Odoo environment appears ready.');
+                resolve();
+              } else if (Date.now() - startTime > timeout) {
+                clearInterval(interval);
+                console.warn('[Odoo Dev Index] Timeout waiting for Odoo to be ready. Extension might not work correctly.');
+                reject(new Error('Timeout waiting for Odoo ready state.'));
+              } else if (typeof odoo !== 'undefined' && typeof odoo.define === 'function' && (!odoo.runtime || !odoo.runtime.app)) {
+                console.log('[Odoo Dev Index] Odoo define is ready, but odoo.runtime.app not yet...');
+              }
+            }, 200); // Check every 200ms
+          }));
+        case 2:
+        case "end":
+          return _context2.stop();
+      }
+    }, _callee2);
+  }));
+  return _waitForOdooReady.apply(this, arguments);
+}
 function initializeOdooDev() {
   return _initializeOdooDev.apply(this, arguments);
 }
 function _initializeOdooDev() {
-  _initializeOdooDev = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
+  _initializeOdooDev = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3() {
     "use strict";
 
     var loadScript, extensionUrl, srcFolder, globalUrlScript, isWebModule, hasFileLoaded, remainingScripts;
-    return _regeneratorRuntime().wrap(function _callee2$(_context2) {
-      while (1) switch (_context2.prev = _context2.next) {
+    return _regeneratorRuntime().wrap(function _callee3$(_context3) {
+      while (1) switch (_context3.prev = _context3.next) {
         case 0:
-          _context2.prev = 0;
+          _context3.prev = 0;
           // Function to dynamically load scripts
           loadScript = function loadScript(path) {
             var url = new URL(path, srcFolder);
@@ -249,19 +284,19 @@ function _initializeOdooDev() {
           }; // Check if we should inject modules
           // 1. Initialize ExtensionCore to get basic data (URL, etc.)
           console.log("[Odoo Dev Index] Initializing ExtensionCore...");
-          _context2.next = 5;
+          _context3.next = 5;
           return _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].init();
         case 5:
           window.ExtensionCore = _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"]; // Make it globally available
           console.log("[Odoo Dev Index] ExtensionCore initialized. Extension Enabled:", _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].isEnabled);
           if (_core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].isEnabled) {
-            _context2.next = 10;
+            _context3.next = 10;
             break;
           }
           console.log("[Odoo Dev Index] Extension is disabled by configuration. Halting Odoo module injections.");
           // Any previously injected elements/patches from a prior enabled state
           // will be gone due to the page reload forced by contentScriptIsolated.js.
-          return _context2.abrupt("return");
+          return _context3.abrupt("return");
         case 10:
           extensionUrl = _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].getUrl();
           srcFolder = extensionUrl + "src/injected/"; // Create a script global with the URL of the extension
@@ -271,33 +306,33 @@ function _initializeOdooDev() {
           isWebModule = window.location.pathname.includes('/web') && !window.location.pathname.includes('/web/login') && !window.location.pathname.includes('/web/signup') || window.location.pathname.includes('/odoo');
           hasFileLoaded = document.querySelector('input[type="file"]') !== null;
           if (!(isWebModule || hasFileLoaded)) {
-            _context2.next = 40;
+            _context3.next = 40;
             break;
           }
           console.log("[Odoo Dev Index] Conditions met, injecting Odoo modules...");
 
           // 2. Load odoo_version_utils.js (needed by bundle_xml.js)
           // This defines 'odoo_dev.version_utils'
-          _context2.next = 21;
+          _context3.next = 21;
           return loadScript("./utils/odoo_version_utils.js");
         case 21:
-          _context2.next = 23;
+          _context3.next = 23;
           return loadScript("./templates/bundle_xml.js");
         case 23:
-          _context2.next = 25;
+          _context3.next = 25;
           return loadScript("./core/client.js");
         case 25:
           // 5. IMPORTANT: Wait for client.js's *internal* async operations (template loading) to complete.
           console.log("[Odoo Dev Index] Waiting for client.js internal initialization (template/CSS loading)...");
           if (!window.odooDevClientReadyPromise) {
-            _context2.next = 32;
+            _context3.next = 32;
             break;
           }
-          _context2.next = 29;
+          _context3.next = 29;
           return window.odooDevClientReadyPromise;
         case 29:
           console.log("[Odoo Dev Index] client.js has finished its internal initialization.");
-          _context2.next = 33;
+          _context3.next = 33;
           break;
         case 32:
           // This should not happen if client.js is structured correctly
@@ -315,10 +350,10 @@ function _initializeOdooDev() {
           // ****** Components ******
           "./views/custom/field_xpath.js", "./views/custom/sidebar_dev.js",
           // Antes que el form_controller.js para que se actualice el resModel
-          "./views/form/form_controller.js",
+          "./views/form/form_controller.js", "./views/list/list_controller.js",
           // ****** Webclient Patches ******
           "./webclient.js", "./tooltip/js/tooltip.js", "./views/form/form_compiler.js", "./views/list/list_renderer.js", "./views/view_button/view_button.js", "./views/field.js", "./form_label.js"]; // Load remaining scripts in parallel
-          _context2.next = 37;
+          _context3.next = 37;
           return Promise.all(remainingScripts.map(function (scriptPath) {
             return loadScript(scriptPath)["catch"](function (err) {
               // Log individual script load errors but don't necessarily stop all others
@@ -327,22 +362,22 @@ function _initializeOdooDev() {
           }));
         case 37:
           console.log("[Odoo Dev Index] All specified injected scripts have been processed.");
-          _context2.next = 41;
+          _context3.next = 41;
           break;
         case 40:
           console.log("[Odoo Dev Index] Conditions not met, no Odoo modules injected.");
         case 41:
-          _context2.next = 46;
+          _context3.next = 46;
           break;
         case 43:
-          _context2.prev = 43;
-          _context2.t0 = _context2["catch"](0);
-          console.error("[Odoo Dev Index] Critical error during extension initialization:", _context2.t0);
+          _context3.prev = 43;
+          _context3.t0 = _context3["catch"](0);
+          console.error("[Odoo Dev Index] Critical error during extension initialization:", _context3.t0);
         case 46:
         case "end":
-          return _context2.stop();
+          return _context3.stop();
       }
-    }, _callee2, null, [[0, 43]]);
+    }, _callee3, null, [[0, 43]]);
   }));
   return _initializeOdooDev.apply(this, arguments);
 }

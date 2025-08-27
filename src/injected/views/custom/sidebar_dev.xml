@@ -42,7 +42,7 @@
                         <span class="dev-info-value" t-esc="state.currentModel" />
                     </li>
                     <li
-                        t-if="state.currentRecordId !== null and state.currentRecordId !== undefined">
+                        t-if="state.currentRecordId !== null and state.currentRecordId !== undefined and state.currentRecordId != false">
                         <strong class="dev-info-label">ID: </strong>
                         <span class="dev-info-value" t-esc="state.currentRecordId" />
                     </li>
@@ -67,7 +67,9 @@
 
             <!-- Output Area for Record Fields -->
             <div class="dev-sidebar-output"
-                t-if="state.recordFields.length > 0 and !state.showingX2ManyListFor and !state.showRunModelMethod">
+                t-if="state.recordFields.length > 0 and !state.showingX2ManyListFor and !state.showRunModelMethod
+                and state.currentRecordId !== null &amp;&amp; state.currentRecordId !== undefined &amp;&amp; state.currentRecordId != false
+                ">
                 <h5 class="mt-2">Record Fields</h5>
                 <div t-if="state.isLoadingFields" class="text-center my-3">
                     <i class="fa fa-spinner fa-spin fa-2x" /> Loading fields... </div>

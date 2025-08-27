@@ -1,6 +1,26 @@
 // src/injected/index.js
 import ExtensionCore from './core/extension-core.js';
 
+async function waitForOdooReady(timeout = 15000) { // Wait up to 15 seconds
+    return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            if (typeof odoo !== 'undefined' && typeof odoo.define === 'function' && odoo.runtime && odoo.runtime.app && odoo.runtime.app.env) {
+                clearInterval(interval);
+                console.log('[Odoo Dev Index] Odoo environment appears ready.');
+                resolve();
+            } else if (Date.now() - startTime > timeout) {
+                clearInterval(interval);
+                console.warn('[Odoo Dev Index] Timeout waiting for Odoo to be ready. Extension might not work correctly.');
+                reject(new Error('Timeout waiting for Odoo ready state.'));
+            } else if (typeof odoo !== 'undefined' && typeof odoo.define === 'function' && (!odoo.runtime || !odoo.runtime.app)) {
+                console.log('[Odoo Dev Index] Odoo define is ready, but odoo.runtime.app not yet...');
+            }
+
+        }, 200); // Check every 200ms
+    });
+}
+
 async function initializeOdooDev() {
     "use strict";
 
@@ -93,6 +113,7 @@ async function initializeOdooDev() {
 
                 "./views/custom/sidebar_dev.js", // Antes que el form_controller.js para que se actualice el resModel
                 "./views/form/form_controller.js",
+                "./views/list/list_controller.js",
                 // ****** Webclient Patches ******
                 "./webclient.js",
 
