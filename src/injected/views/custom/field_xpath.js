@@ -55,9 +55,9 @@ odoo.define('odoo_dev.components.field_xpath', ['@odoo/owl', '@web/core/utils/ho
 
             this.state.isLoading = true;
             this.state.foundViews = []; // Resetear vistas encontradas
-            const record = this.props.record;
+            const resModel = this.props.model;
             const fieldName = this.props.fieldName;
-            const resModel = record.resModel;
+            console.log("FieldXpath: field", fieldName);
 
             if (!fieldName || !resModel) {
                 console.warn("FieldXpath: fieldName or resModel missing.");
@@ -145,7 +145,7 @@ odoo.define('odoo_dev.components.field_xpath', ['@odoo/owl', '@web/core/utils/ho
             const viewXmlId = viewInfo.viewXmlId.includes('.') ? viewInfo.viewXmlId : `module_name.${viewInfo.viewXmlId}`; // Asumir module_name si no existe
             const inheritIdRef = viewXmlId; // Usar el xml_id completo como ref
             const newViewId = `${viewXmlId.split('.').pop()}_inherit_${fieldName}`.replace(/[^a-zA-Z0-9_]/g, '_'); // Generar ID único
-            const modelName = this.props.record.resModel;
+            const modelName = this.props.model;
 
             // Escapar caracteres especiales en el XPath para usarlo dentro de expr="..."
             const escapedXPath = viewInfo.xpath.replace(/"/g, "'"); // Reemplazar comillas dobles por simples
