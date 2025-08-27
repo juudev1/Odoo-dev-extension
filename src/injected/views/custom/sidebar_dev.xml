@@ -131,8 +131,7 @@
                                             t-on-click="() => startEdit(field)">
                                             <i class="fa fa-pencil" />
                                         </button>
-                                        <FieldXpath t-if="props.record" record="props.record"
-                                            fieldName="field.key" />
+                                        <FieldXpath model="state.currentModel" fieldName="field.key" />
                                     </div>
                                 </div>
                                 <small class="technical-field-name text-muted d-block"> (<t
