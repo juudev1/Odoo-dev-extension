@@ -32,6 +32,12 @@ odoo.define('odoo_dev.services.devinfo', ['@web/core/registry', "@web/core/toolt
             }
 
             function onContextMenu(ev) {
+                // Only handle contextmenu when Ctrl is pressed (Ctrl + right-click).
+                // Let the normal context menu run when Ctrl is not held.
+                if (!ev.ctrlKey) {
+                    return;
+                }
+
                 let el = ev.target;
                 ev.preventDefault();
 
