@@ -87,6 +87,156 @@ var ExtensionCore = /*#__PURE__*/function () {
       }
       return _assertClassBrand(ExtensionCore, this, _isEnabled)._;
     }
+
+    /**
+     * Returns the allowed URLs where the extension can execute
+     * @returns {Object} Object containing allowed and excluded URL patterns
+     */
+  }, {
+    key: "getAllowedUrls",
+    value: function getAllowedUrls() {
+      return {
+        // URLs where the extension is allowed to run
+        allowedPatterns: ["<all_urls>" // The extension runs on all URLs by default
+        ],
+        // URLs where the extension is specifically excluded
+        excludedPatterns: ["https://*/web/login*",
+        // Login pages are excluded
+        "https://*/jobs/*",
+        // Jobs pages are excluded
+        "http://*/jobs/*" // Jobs pages on HTTP are also excluded
+        ],
+        // Specific conditions for Odoo module injection
+        odooModuleConditions: {
+          // Web module paths (where main Odoo functionality is injected)
+          webModulePaths: ["/web",
+          // General web interface (backend)
+          "/odoo" // Odoo specific paths
+          ],
+          // Excluded web paths (even within /web)
+          excludedWebPaths: ["/web/login",
+          // Login page
+          "/web/signup",
+          // Signup page
+          "/web/jobs" // Jobs page
+          ],
+          // Portal/Frontend paths that should be excluded
+          portalPaths: ["/shop", "/blog", "/event", "/slides", "/forum", "/jobs", "/contactus", "/aboutus", "/page/", "/website", "/survey"],
+          // Additional conditions
+          hasFileInput: "presence of file input elements triggers injection",
+          requiresBackendContext: "extension only works in Odoo backend context"
+        },
+        // Method to check if current URL is allowed for extension execution
+        isCurrentUrlAllowed: function isCurrentUrlAllowed() {
+          var currentUrl = window.location.href;
+          var currentPath = window.location.pathname;
+
+          // Check if current URL matches excluded patterns
+          var isExcluded = this.excludedPatterns.some(function (pattern) {
+            if (pattern.includes("*/web/login*")) {
+              return currentPath.includes('/web/login');
+            }
+            if (pattern.includes("*/jobs/*")) {
+              return currentPath.includes('/jobs');
+            }
+            return false;
+          });
+          if (isExcluded) {
+            var excludeReason = "unknown exclusion";
+            if (currentPath.includes('/web/login')) {
+              excludeReason = "login page exclusion";
+            } else if (currentPath.includes('/jobs')) {
+              excludeReason = "jobs page exclusion";
+            }
+            return {
+              allowed: false,
+              reason: "URL matches excluded pattern",
+              pattern: excludeReason
+            };
+          }
+
+          // Since we use <all_urls>, extension can run everywhere except excluded
+          return {
+            allowed: true,
+            reason: "URL matches allowed patterns",
+            pattern: "<all_urls>"
+          };
+        },
+        // Method to check if current URL should have Odoo modules injected
+        shouldInjectOdooModules: function shouldInjectOdooModules() {
+          var currentPath = window.location.pathname;
+          var hasFileInput = document.querySelector('input[type="file"]') !== null;
+
+          // Check if current path is excluded
+          var isExcludedPath = this.odooModuleConditions.excludedWebPaths.some(function (excludedPath) {
+            return currentPath.includes(excludedPath);
+          });
+
+          // Also check for jobs routes (like /jobs/apply/*)
+          var isJobsPath = currentPath.includes('/jobs');
+
+          // Detect portal/frontend views by checking for common indicators
+          var isPortalView = this._detectPortalView();
+
+          // Check if it's a backend web module (admin interface)
+          var isBackendWebModule = currentPath.includes('/web') && !isExcludedPath && !isPortalView && this._isBackendContext();
+
+          // Check if it's an Odoo specific path (usually backend)
+          var isOdooModule = currentPath.includes('/odoo') && !isExcludedPath && !isPortalView;
+          var shouldInject = (isBackendWebModule || isOdooModule) && !isJobsPath;
+          return {
+            shouldInject: shouldInject,
+            reasons: {
+              isBackendWebModule: isBackendWebModule,
+              isOdooModule: isOdooModule,
+              hasFileInput: hasFileInput,
+              currentPath: currentPath,
+              isExcludedPath: isExcludedPath,
+              isJobsPath: isJobsPath,
+              isPortalView: isPortalView,
+              excludedPaths: this.odooModuleConditions.excludedWebPaths
+            }
+          };
+        },
+        // Helper method to detect if current page is a portal/frontend view
+        _detectPortalView: function _detectPortalView() {
+          var currentPath = window.location.pathname;
+
+          // Common portal/frontend paths
+          var portalPaths = ['/shop', '/blog', '/event', '/slides', '/forum', '/jobs', '/contactus', '/aboutus', '/page/', '/website', '/survey'];
+
+          // Check if path matches portal patterns
+          var hasPortalPath = portalPaths.some(function (path) {
+            return currentPath.includes(path);
+          });
+
+          // Check for frontend-specific elements in DOM
+          var hasFrontendAssets = document.querySelector('link[href*="web.assets_frontend"]') !== null;
+          var hasWebsiteAssets = document.querySelector('link[href*="website.assets"]') !== null;
+
+          // Check if we're NOT in the backend by looking for backend-specific elements
+          var hasBackendAssets = document.querySelector('link[href*="web.assets_backend"]') !== null;
+          var hasWebClient = document.querySelector('.o_web_client') !== null;
+          return hasPortalPath || (hasFrontendAssets || hasWebsiteAssets) && !hasBackendAssets;
+        },
+        // Helper method to detect backend context
+        _isBackendContext: function _isBackendContext() {
+          // Look for backend-specific indicators
+          var hasBackendAssets = document.querySelector('link[href*="web.assets_backend"]') !== null;
+          var hasWebClient = document.querySelector('.o_web_client') !== null;
+          var hasActionManager = document.querySelector('.o_action_manager') !== null;
+          var hasControlPanel = document.querySelector('.o_control_panel') !== null;
+
+          // Check URL patterns that typically indicate backend
+          var currentPath = window.location.pathname;
+          var backendPatterns = ['/web#', '/web?', '/web/database', '/web/webclient'];
+          var hasBackendUrl = backendPatterns.some(function (pattern) {
+            return currentPath.includes(pattern) || window.location.href.includes(pattern);
+          });
+          return hasBackendAssets || hasWebClient || hasActionManager || hasControlPanel || hasBackendUrl;
+        }
+      };
+    }
   }]);
 }();
 _ExtensionCore = ExtensionCore;
@@ -257,7 +407,7 @@ function _initializeOdooDev() {
   _initializeOdooDev = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3() {
     "use strict";
 
-    var loadScript, extensionUrl, srcFolder, globalUrlScript, isWebModule, hasFileLoaded, remainingScripts;
+    var loadScript, earlyUrlCheck, earlyInjectionCheck, extensionUrl, srcFolder, globalUrlScript, urlCheck, injectionCheck, remainingScripts;
     return _regeneratorRuntime().wrap(function _callee3$(_context3) {
       while (1) switch (_context3.prev = _context3.next) {
         case 0:
@@ -282,62 +432,86 @@ function _initializeOdooDev() {
               document.head.appendChild(script);
             });
           }; // Check if we should inject modules
+          // 0. Early check to avoid loading in inappropriate contexts
+          console.log("[Odoo Dev Index] Performing early context validation...");
+          earlyUrlCheck = _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].getAllowedUrls();
+          earlyInjectionCheck = earlyUrlCheck.shouldInjectOdooModules();
+          if (earlyInjectionCheck.shouldInject) {
+            _context3.next = 9;
+            break;
+          }
+          console.log("[Odoo Dev Index] Early validation failed - skipping initialization");
+          console.log("[Odoo Dev Index] Early rejection reasons:", earlyInjectionCheck.reasons);
+          return _context3.abrupt("return");
+        case 9:
           // 1. Initialize ExtensionCore to get basic data (URL, etc.)
           console.log("[Odoo Dev Index] Initializing ExtensionCore...");
-          _context3.next = 5;
+          _context3.next = 12;
           return _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].init();
-        case 5:
+        case 12:
           window.ExtensionCore = _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"]; // Make it globally available
           console.log("[Odoo Dev Index] ExtensionCore initialized. Extension Enabled:", _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].isEnabled);
           if (_core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].isEnabled) {
-            _context3.next = 10;
+            _context3.next = 17;
             break;
           }
           console.log("[Odoo Dev Index] Extension is disabled by configuration. Halting Odoo module injections.");
           // Any previously injected elements/patches from a prior enabled state
           // will be gone due to the page reload forced by contentScriptIsolated.js.
           return _context3.abrupt("return");
-        case 10:
+        case 17:
           extensionUrl = _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].getUrl();
           srcFolder = extensionUrl + "src/injected/"; // Create a script global with the URL of the extension
           globalUrlScript = document.createElement("script");
           globalUrlScript.textContent = "window.__devExtensionUrl = \"".concat(extensionUrl, "\";");
           document.head.appendChild(globalUrlScript);
-          isWebModule = window.location.pathname.includes('/web') && !window.location.pathname.includes('/web/login') && !window.location.pathname.includes('/web/signup') || window.location.pathname.includes('/odoo');
-          hasFileLoaded = document.querySelector('input[type="file"]') !== null;
-          if (!(isWebModule || hasFileLoaded)) {
-            _context3.next = 40;
+          urlCheck = _core_extension_core_js__WEBPACK_IMPORTED_MODULE_0__["default"].getAllowedUrls();
+          injectionCheck = urlCheck.shouldInjectOdooModules();
+          console.log("[Odoo Dev Index] URL analysis:", {
+            currentUrl: window.location.href,
+            isAllowed: urlCheck.isCurrentUrlAllowed(),
+            shouldInject: injectionCheck
+          });
+          if (!injectionCheck.shouldInject) {
+            _context3.next = 52;
             break;
           }
           console.log("[Odoo Dev Index] Conditions met, injecting Odoo modules...");
+          console.log("[Odoo Dev Index] Injection reasons:", injectionCheck.reasons);
 
-          // 2. Load odoo_version_utils.js (needed by bundle_xml.js)
-          // This defines 'odoo_dev.version_utils'
-          _context3.next = 21;
+          // Additional safety check: ensure we're in a valid Odoo backend context
+          if (!injectionCheck.reasons.isPortalView) {
+            _context3.next = 31;
+            break;
+          }
+          console.warn("[Odoo Dev Index] Portal view detected - aborting injection to prevent template errors");
+          return _context3.abrupt("return");
+        case 31:
+          _context3.next = 33;
           return loadScript("./utils/odoo_version_utils.js");
-        case 21:
-          _context3.next = 23;
+        case 33:
+          _context3.next = 35;
           return loadScript("./templates/bundle_xml.js");
-        case 23:
-          _context3.next = 25;
+        case 35:
+          _context3.next = 37;
           return loadScript("./core/client.js");
-        case 25:
+        case 37:
           // 5. IMPORTANT: Wait for client.js's *internal* async operations (template loading) to complete.
           console.log("[Odoo Dev Index] Waiting for client.js internal initialization (template/CSS loading)...");
           if (!window.odooDevClientReadyPromise) {
-            _context3.next = 32;
+            _context3.next = 44;
             break;
           }
-          _context3.next = 29;
+          _context3.next = 41;
           return window.odooDevClientReadyPromise;
-        case 29:
+        case 41:
           console.log("[Odoo Dev Index] client.js has finished its internal initialization.");
-          _context3.next = 33;
+          _context3.next = 45;
           break;
-        case 32:
+        case 44:
           // This should not happen if client.js is structured correctly
           console.warn("[Odoo Dev Index] window.odooDevClientReadyPromise was not set by client.js. Proceeding, but templates might not be ready.");
-        case 33:
+        case 45:
           // 6. Now that templates are loaded, load all other scripts.
           console.log("[Odoo Dev Index] Loading remaining UI components and patches...");
           remainingScripts = [
@@ -353,31 +527,32 @@ function _initializeOdooDev() {
           "./views/form/form_controller.js", "./views/list/list_controller.js",
           // ****** Webclient Patches ******
           "./webclient.js", "./tooltip/js/tooltip.js", "./views/form/form_compiler.js", "./views/list/list_renderer.js", "./views/view_button/view_button.js", "./views/field.js", "./form_label.js"]; // Load remaining scripts in parallel
-          _context3.next = 37;
+          _context3.next = 49;
           return Promise.all(remainingScripts.map(function (scriptPath) {
             return loadScript(scriptPath)["catch"](function (err) {
               // Log individual script load errors but don't necessarily stop all others
               console.error("[Odoo Dev Index] Non-critical error loading script: ".concat(err.message, ". Some features might be affected."));
             });
           }));
-        case 37:
+        case 49:
           console.log("[Odoo Dev Index] All specified injected scripts have been processed.");
-          _context3.next = 41;
+          _context3.next = 54;
           break;
-        case 40:
+        case 52:
           console.log("[Odoo Dev Index] Conditions not met, no Odoo modules injected.");
-        case 41:
-          _context3.next = 46;
+          console.log("[Odoo Dev Index] Rejection reasons:", injectionCheck.reasons);
+        case 54:
+          _context3.next = 59;
           break;
-        case 43:
-          _context3.prev = 43;
+        case 56:
+          _context3.prev = 56;
           _context3.t0 = _context3["catch"](0);
           console.error("[Odoo Dev Index] Critical error during extension initialization:", _context3.t0);
-        case 46:
+        case 59:
         case "end":
           return _context3.stop();
       }
-    }, _callee3, null, [[0, 43]]);
+    }, _callee3, null, [[0, 56]]);
   }));
   return _initializeOdooDev.apply(this, arguments);
 }

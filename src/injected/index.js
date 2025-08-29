@@ -25,6 +25,17 @@ async function initializeOdooDev() {
     "use strict";
 
     try {
+        // 0. Early check to avoid loading in inappropriate contexts
+        console.log("[Odoo Dev Index] Performing early context validation...");
+        const earlyUrlCheck = ExtensionCore.getAllowedUrls();
+        const earlyInjectionCheck = earlyUrlCheck.shouldInjectOdooModules();
+        
+        if (!earlyInjectionCheck.shouldInject) {
+            console.log("[Odoo Dev Index] Early validation failed - skipping initialization");
+            console.log("[Odoo Dev Index] Early rejection reasons:", earlyInjectionCheck.reasons);
+            return; // Exit early without initializing anything
+        }
+        
         // 1. Initialize ExtensionCore to get basic data (URL, etc.)
         console.log("[Odoo Dev Index] Initializing ExtensionCore...");
         await ExtensionCore.init();
@@ -68,11 +79,24 @@ async function initializeOdooDev() {
         }
 
         // Check if we should inject modules
-        var isWebModule = (window.location.pathname.includes('/web') && !window.location.pathname.includes('/web/login') && !window.location.pathname.includes('/web/signup')) || window.location.pathname.includes('/odoo');
-        const hasFileLoaded = document.querySelector('input[type="file"]') !== null;
+        const urlCheck = ExtensionCore.getAllowedUrls();
+        const injectionCheck = urlCheck.shouldInjectOdooModules();
+        
+        console.log("[Odoo Dev Index] URL analysis:", {
+            currentUrl: window.location.href,
+            isAllowed: urlCheck.isCurrentUrlAllowed(),
+            shouldInject: injectionCheck
+        });
 
-        if (isWebModule || hasFileLoaded) {
+        if (injectionCheck.shouldInject) {
             console.log("[Odoo Dev Index] Conditions met, injecting Odoo modules...");
+            console.log("[Odoo Dev Index] Injection reasons:", injectionCheck.reasons);
+            
+            // Additional safety check: ensure we're in a valid Odoo backend context
+            if (injectionCheck.reasons.isPortalView) {
+                console.warn("[Odoo Dev Index] Portal view detected - aborting injection to prevent template errors");
+                return;
+            }
 
             // 2. Load odoo_version_utils.js (needed by bundle_xml.js)
             // This defines 'odoo_dev.version_utils'
@@ -138,6 +162,7 @@ async function initializeOdooDev() {
 
         } else {
             console.log("[Odoo Dev Index] Conditions not met, no Odoo modules injected.");
+            console.log("[Odoo Dev Index] Rejection reasons:", injectionCheck.reasons);
         }
     } catch (error) {
         console.error("[Odoo Dev Index] Critical error during extension initialization:", error);
