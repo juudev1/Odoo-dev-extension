@@ -25,7 +25,7 @@ class ExtensionCore {
             // Use a wrapper function for the event listener so 'this' refers to ExtensionCore
             window.addEventListener('message', this.#handleInitMessageWrapper);
 
-            console.log('[ExtensionCore] Requesting EXTENSION_INIT data...');
+            // console.log('[ExtensionCore] Requesting EXTENSION_INIT data...');
             window.postMessage({ type: 'REQUEST_EXTENSION_INIT' }, '*');
         });
         return this.#initPromise;
@@ -71,6 +71,7 @@ class ExtensionCore {
         return {
             templates: [
                 this.getUrl('src/injected/views/list/list_renderer.xml'),
+                this.getUrl('src/injected/views/list/sale_order_line.xml'),
                 this.getUrl('src/injected/views/form/form_view.xml'),
                 this.getUrl('src/injected/views/field.xml'),
                 this.getUrl('src/injected/views/view_button/view_button.xml'),

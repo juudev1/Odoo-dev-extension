@@ -21,7 +21,7 @@ odoo.define('odoo_dev.ListRenderer', ['@web/views/list/list_renderer', '@web/cor
                 // openDevSidebarForRow se llamará desde el template o desde otro método
                 this.updateActiveRecordFromRow = this.updateActiveRecordFromRow.bind(this);
 
-                console.log("[ListRenderer Patched] Setup complete. ActiveRecordService injected.");
+                // console.log("[ListRenderer Patched] Setup complete. ActiveRecordService injected.");
             },
 
             /**
@@ -94,7 +94,7 @@ odoo.define('odoo_dev.ListRenderer', ['@web/views/list/list_renderer', '@web/cor
                 // openDevSidebarForRow se llamará desde el template o desde otro método
                 this.updateActiveRecordFromRow = this.updateActiveRecordFromRow.bind(this);
 
-                console.log("[ListRenderer Patched] Setup complete. ActiveRecordService injected.");
+                // console.log("[ListRenderer Patched] Setup complete. ActiveRecordService injected.");
             },
 
             /**
@@ -167,7 +167,7 @@ odoo.define('odoo_dev.ListRenderer', ['@web/views/list/list_renderer', '@web/cor
                 // openDevSidebarForRow se llamará desde el template o desde otro método
                 this.updateActiveRecordFromRow = this.updateActiveRecordFromRow.bind(this);
 
-                console.log("[ListRenderer Patched] Setup complete. ActiveRecordService injected.");
+                // console.log("[ListRenderer Patched] Setup complete. ActiveRecordService injected.");
             },
 
             /**

@@ -58,7 +58,7 @@ async function prepareExtensionData(forceRefresh = false) {
         return extensionInitData;
     }
 
-    console.log(`[Isolated Script] Preparing extension data. Force refresh: ${forceRefresh}`);
+    // console.log(`[Isolated Script] Preparing extension data. Force refresh: ${forceRefresh}`);
     try {
         const states = await getStatesFromStorage(); // Always get the latest states
         const storedImage = await getStoredBackgroundImage(); // Get the latest image
@@ -73,7 +73,7 @@ async function prepareExtensionData(forceRefresh = false) {
             isBackgroundEnabled: states.isBackgroundEnabled // Current background enabled state
         };
         isDataReady = true; // Mark data as ready (or re-validated)
-        console.log('[Isolated Script] Extension data prepared successfully:', extensionInitData);
+        // console.log('[Isolated Script] Extension data prepared successfully:', extensionInitData);
         return extensionInitData;
     } catch (error) {
         console.error('[Isolated Script] Critical error preparing extension data:', error);
@@ -111,7 +111,7 @@ async function sendInitDataToMainWorld(forceDataRefresh = false) {
 window.addEventListener('message', async (event) => {
     // Basic security: ensure the message is from the current window and has the expected structure
     if (event.source === window && event.data && event.data.type === 'REQUEST_EXTENSION_INIT') {
-        console.log('[Isolated Script] Received REQUEST_EXTENSION_INIT from MAIN world.');
+        // console.log('[Isolated Script] Received REQUEST_EXTENSION_INIT from MAIN world.');
         // When MAIN world requests data, prepare it (if not ready) and send it.
         // Don't force refresh here; let the initial prepareExtensionData() call handle the first load.
         await sendInitDataToMainWorld();
@@ -169,7 +169,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 prepareExtensionData()
     .then(initialData => {
         if (initialData) {
-            console.log("[Isolated Script] Initial data preparation complete on load.", initialData);
+            // console.log("[Isolated Script] Initial data preparation complete on load.", initialData);
         } else {
             console.error("[Isolated Script] Initial data preparation failed on load.");
         }

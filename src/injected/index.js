@@ -26,7 +26,7 @@ async function initializeOdooDev() {
 
     try {
         // 0. Early check to avoid loading in inappropriate contexts
-        console.log("[Odoo Dev Index] Performing early context validation...");
+        // console.log("[Odoo Dev Index] Performing early context validation...");
         const earlyUrlCheck = ExtensionCore.getAllowedUrls();
         const earlyInjectionCheck = earlyUrlCheck.shouldInjectOdooModules();
         
@@ -37,10 +37,10 @@ async function initializeOdooDev() {
         }
         
         // 1. Initialize ExtensionCore to get basic data (URL, etc.)
-        console.log("[Odoo Dev Index] Initializing ExtensionCore...");
+        // console.log("[Odoo Dev Index] Initializing ExtensionCore...");
         await ExtensionCore.init();
         window.ExtensionCore = ExtensionCore; // Make it globally available
-        console.log("[Odoo Dev Index] ExtensionCore initialized. Extension Enabled:", ExtensionCore.isEnabled);
+        // console.log("[Odoo Dev Index] ExtensionCore initialized. Extension Enabled:", ExtensionCore.isEnabled);
 
         if (!ExtensionCore.isEnabled) {
             console.log("[Odoo Dev Index] Extension is disabled by configuration. Halting Odoo module injections.");
@@ -60,13 +60,13 @@ async function initializeOdooDev() {
         // Function to dynamically load scripts
         function loadScript(path) {
             const url = new URL(path, srcFolder);
-            console.log("[Odoo Dev Index] Requesting script:", path);
+            // console.log("[Odoo Dev Index] Requesting script:", path);
             return new Promise((resolve, reject) => {
                 let script = document.createElement("script");
                 script.src = url.href;
                 script.type = "module"; // Assuming all are modules
                 script.onload = () => {
-                    console.log("[Odoo Dev Index] Loaded script:", path);
+                    // console.log("[Odoo Dev Index] Loaded script:", path);
                     resolve(path);
                 };
                 script.onerror = (err) => {
@@ -82,15 +82,15 @@ async function initializeOdooDev() {
         const urlCheck = ExtensionCore.getAllowedUrls();
         const injectionCheck = urlCheck.shouldInjectOdooModules();
         
-        console.log("[Odoo Dev Index] URL analysis:", {
-            currentUrl: window.location.href,
-            isAllowed: urlCheck.isCurrentUrlAllowed(),
-            shouldInject: injectionCheck
-        });
+        // console.log("[Odoo Dev Index] URL analysis:", {
+        //     currentUrl: window.location.href,
+        //     isAllowed: urlCheck.isCurrentUrlAllowed(),
+        //     shouldInject: injectionCheck
+        // });
 
         if (injectionCheck.shouldInject) {
-            console.log("[Odoo Dev Index] Conditions met, injecting Odoo modules...");
-            console.log("[Odoo Dev Index] Injection reasons:", injectionCheck.reasons);
+            // console.log("[Odoo Dev Index] Conditions met, injecting Odoo modules...");
+            // console.log("[Odoo Dev Index] Injection reasons:", injectionCheck.reasons);
             
             // Additional safety check: ensure we're in a valid Odoo backend context
             if (injectionCheck.reasons.isPortalView) {
@@ -112,17 +112,17 @@ async function initializeOdooDev() {
             await loadScript("./core/client.js");
 
             // 5. IMPORTANT: Wait for client.js's *internal* async operations (template loading) to complete.
-            console.log("[Odoo Dev Index] Waiting for client.js internal initialization (template/CSS loading)...");
+            // console.log("[Odoo Dev Index] Waiting for client.js internal initialization (template/CSS loading)...");
             if (window.odooDevClientReadyPromise) {
                 await window.odooDevClientReadyPromise;
-                console.log("[Odoo Dev Index] client.js has finished its internal initialization.");
+                // console.log("[Odoo Dev Index] client.js has finished its internal initialization.");
             } else {
                 // This should not happen if client.js is structured correctly
                 console.warn("[Odoo Dev Index] window.odooDevClientReadyPromise was not set by client.js. Proceeding, but templates might not be ready.");
             }
 
             // 6. Now that templates are loaded, load all other scripts.
-            console.log("[Odoo Dev Index] Loading remaining UI components and patches...");
+            // console.log("[Odoo Dev Index] Loading remaining UI components and patches...");
             const remainingScripts = [
                 // ExtensionCore is already an ES Module import, no need to loadScript it.
                 // bundle_xml.js and client.js already loaded.
@@ -145,6 +145,7 @@ async function initializeOdooDev() {
 
                 "./views/form/form_compiler.js",
                 "./views/list/list_renderer.js",
+                "./views/list/sale_order_line.js",
                 "./views/view_button/view_button.js",
                 "./views/field.js",
                 "./form_label.js"
@@ -158,7 +159,7 @@ async function initializeOdooDev() {
                 })
             ));
 
-            console.log("[Odoo Dev Index] All specified injected scripts have been processed.");
+            // console.log("[Odoo Dev Index] All specified injected scripts have been processed.");
 
         } else {
             console.log("[Odoo Dev Index] Conditions not met, no Odoo modules injected.");

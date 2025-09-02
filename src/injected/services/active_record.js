@@ -48,13 +48,13 @@ odoo.define('odoo_dev.active_record', ['@odoo/owl', '@web/core/registry'], async
                 },
 
                 setActiveRecord(resModel, resId, isFormView = false) {
-                    console.log("[activeRecordService] setActiveRecord CALLED. New state:", resModel, resId, "IsForm:", isFormView);
+                    // console.log("[activeRecordService] setActiveRecord CALLED. New state:", resModel, resId, "IsForm:", isFormView);
                     _state.currentResModel = resModel;
                     _state.currentResId = resId;
                     _state.currentIsFormView = isFormView;
 
                     if (isFormView && resModel && resId !== null) {
-                        console.log("[activeRecordService] Storing as MainFormContext:", resModel, resId);
+                        // console.log("[activeRecordService] Storing as MainFormContext:", resModel, resId);
                         _state.mainFormResModel = resModel;
                         _state.mainFormResId = resId;
                     }

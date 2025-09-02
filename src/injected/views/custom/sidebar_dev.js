@@ -169,7 +169,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             const eventData = payload.detail || payload;
             const { resModel: serviceModel, resId: serviceResId, isFormView: serviceIsFormView } = eventData;
 
-            console.log(`[SideBarDev _onActiveRecordChanged] Event: M=${serviceModel}, ID=${serviceResId}, Form=${serviceIsFormView}`);
+            // console.log(`[SideBarDev _onActiveRecordChanged] Event: M=${serviceModel}, ID=${serviceResId}, Form=${serviceIsFormView}`);
             // console.log(`  Current Sidebar State (before): M=${this.state.currentModel}, ID=${this.state.currentRecordId}, NavStack=${this.state.navigationStack.length}, X2MView=${!!this.state.showingX2ManyListFor}`);
 
             // Determine if the service event is different from what the sidebar is currently displaying
@@ -178,7 +178,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 serviceResId !== this.state.currentRecordId ||
                 (serviceIsFormView !== undefined && serviceIsFormView !== this.state.isFormView); // also consider formView change
 
-            console.log(`[SideBarDev _onActiveRecordChanged] Service is different from current display: ${serviceIsDifferentFromCurrentDisplay}`);
+            // console.log(`[SideBarDev _onActiveRecordChanged] Service is different from current display: ${serviceIsDifferentFromCurrentDisplay}`);
 
             if (serviceIsDifferentFromCurrentDisplay) {
                 // The main Odoo UI context has changed to something different than what the sidebar is showing.
@@ -187,7 +187,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 if (this.state.navigationStack.length > 0 || this.state.showingX2ManyListFor) {
                     // Sidebar has internal navigation. The main Odoo UI changed to something new.
                     // We should clear the internal navigation AND adopt the new service context.
-                    console.log("[SideBarDev _onActiveRecordChanged] Main context changed. Overriding sidebar internal navigation and adopting new context from service.");
+                    // console.log("[SideBarDev _onActiveRecordChanged] Main context changed. Overriding sidebar internal navigation and adopting new context from service.");
 
                     this.state.navigationStack = [];
                     this.state.showingX2ManyListFor = null;
@@ -200,10 +200,10 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
 
 
                     if (serviceModel && serviceResId !== null) {
-                        console.log("[SideBarDev _onActiveRecordChanged]   Calling getRecordValues() directly after override.");
+                        // console.log("[SideBarDev _onActiveRecordChanged]   Calling getRecordValues() directly after override.");
                         this.getRecordValues(); // Load data for the new context immediately
                     } else {
-                        console.log("[SideBarDev _onActiveRecordChanged]   Clearing output directly after override (empty context).");
+                        // console.log("[SideBarDev _onActiveRecordChanged]   Clearing output directly after override (empty context).");
                         this.clearOutput(true);
                     }
 
@@ -212,13 +212,13 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                     // Sidebar was already at its root (no internal navigation).
                     // The change is from one root context to another.
                     // Directly update and let useEffect confirm or handle visibility.
-                    console.log("[SideBarDev _onActiveRecordChanged] Main context changed, sidebar at root. Updating context.");
+                    // console.log("[SideBarDev _onActiveRecordChanged] Main context changed, sidebar at root. Updating context.");
                     this.state.currentModel = serviceModel;
                     this.state.currentRecordId = serviceResId;
                     this.state.isFormView = serviceIsFormView;
 
                     if (serviceModel && serviceResId !== null) {
-                        console.log("[SideBarDev _onActiveRecordChanged]   Root change, visible, no data. Calling getRecordValues().");
+                        // console.log("[SideBarDev _onActiveRecordChanged]   Root change, visible, no data. Calling getRecordValues().");
                         this.getRecordValues();
                     } else {
                         this.clearOutput(true);
@@ -234,7 +234,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                     this.state.currentModel && this.state.currentRecordId !== null &&
                     !this.state.showRunModelMethod && !this.state.reports.length && // only if fields tab should be active
                     this.state.navigationStack.length === 0 && !this.state.showingX2ManyListFor) { // and at root
-                    console.log("[SideBarDev _onActiveRecordChanged] Sidebar visible at root, event for current record, but no field data. Calling getRecordValues().");
+                    // console.log("[SideBarDev _onActiveRecordChanged] Sidebar visible at root, event for current record, but no field data. Calling getRecordValues().");
                     this.getRecordValues();
                 }
             }
@@ -465,7 +465,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 // For fields that were not part of bulk load (m2o, x2m, binary), their isLoading was already set.
                 // And for those in bulk load, isLoading is now false.
                 this.state.recordFields = [...this.state.recordFields]; // Ensure reactivity after updates
-                console.log("[SideBarDev getRecordValues] Record fields processed:", JSON.parse(JSON.stringify(this.state.recordFields)));
+                // console.log("[SideBarDev getRecordValues] Record fields processed:", JSON.parse(JSON.stringify(this.state.recordFields)));
 
             } catch (error) {
                 console.error("[SideBarDev getRecordValues] Error fetching field definitions:", error);

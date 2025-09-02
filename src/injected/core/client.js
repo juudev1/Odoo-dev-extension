@@ -89,10 +89,10 @@ window.odooDevClientReadyPromise = new Promise((resolveClientReady, rejectClient
                     console.log("[Odoo Dev Client] No background image URL to apply.");
                 }
             } else {
-                console.log("[Odoo Dev Client] ExtensionCore.extensionData or backgroundImg not available for background styling.");
+                // console.log("[Odoo Dev Client] ExtensionCore.extensionData or backgroundImg not available for background styling.");
             }
 
-            console.log("[Odoo Dev Client] Initialization complete.");
+            // console.log("[Odoo Dev Client] Initialization complete.");
             resolveClientReady(); // Signal that client.js's async work is done
         } catch (error) {
             console.error('[Odoo Dev Client] Error during initialization:', error);

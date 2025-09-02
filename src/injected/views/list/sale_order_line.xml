@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+    <t
+        t-name="odoo_dev.sale_ListRenderer.RecordRow"
+        t-inherit="sale.ListRenderer.RecordRow"
+        t-inherit-mode="primary"
+    >
+        <xpath expr="//tr[hasclass('o_data_row')]" position="attributes">
+            <attribute name="t-on-click">(ev) => this.onRecordClicked(record, ev)</attribute>
+        </xpath>
+    </t>
+</templates>
