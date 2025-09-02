@@ -72,6 +72,7 @@ class ExtensionCore {
             templates: [
                 this.getUrl('src/injected/views/list/list_renderer.xml'),
                 this.getUrl('src/injected/views/list/sale_order_line.xml'),
+                this.getUrl('src/injected/views/list/stock_move.xml'),
                 this.getUrl('src/injected/views/form/form_view.xml'),
                 this.getUrl('src/injected/views/field.xml'),
                 this.getUrl('src/injected/views/view_button/view_button.xml'),

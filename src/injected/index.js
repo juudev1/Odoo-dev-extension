@@ -146,6 +146,7 @@ async function initializeOdooDev() {
                 "./views/form/form_compiler.js",
                 "./views/list/list_renderer.js",
                 "./views/list/sale_order_line.js",
+                "./views/list/stock_move.js",
                 "./views/view_button/view_button.js",
                 "./views/field.js",
                 "./form_label.js"
