@@ -107,14 +107,14 @@ class ExtensionCore {
             allowedPatterns: [
                 "<all_urls>" // The extension runs on all URLs by default
             ],
-            
+
             // URLs where the extension is specifically excluded
             excludedPatterns: [
                 "https://*/web/login*", // Login pages are excluded
                 "https://*/jobs/*",     // Jobs pages are excluded
                 "http://*/jobs/*"       // Jobs pages on HTTP are also excluded
             ],
-            
+
             // Specific conditions for Odoo module injection
             odooModuleConditions: {
                 // Web module paths (where main Odoo functionality is injected)
@@ -122,18 +122,18 @@ class ExtensionCore {
                     "/web", // General web interface (backend)
                     "/odoo" // Odoo specific paths
                 ],
-                
+
                 // Excluded web paths (even within /web)
                 excludedWebPaths: [
                     "/web/login", // Login page
                     "/web/signup", // Signup page
                     "/web/jobs" // Jobs page
                 ],
-                
+
                 // Portal/Frontend paths that should be excluded
                 portalPaths: [
                     "/shop",
-                    "/blog", 
+                    "/blog",
                     "/event",
                     "/slides",
                     "/forum",
@@ -144,17 +144,17 @@ class ExtensionCore {
                     "/website",
                     "/survey"
                 ],
-                
+
                 // Additional conditions
                 hasFileInput: "presence of file input elements triggers injection",
                 requiresBackendContext: "extension only works in Odoo backend context"
             },
-            
+
             // Method to check if current URL is allowed for extension execution
-            isCurrentUrlAllowed: function() {
+            isCurrentUrlAllowed: function () {
                 const currentUrl = window.location.href;
                 const currentPath = window.location.pathname;
-                
+
                 // Check if current URL matches excluded patterns
                 const isExcluded = this.excludedPatterns.some(pattern => {
                     if (pattern.includes("*/web/login*")) {
@@ -165,7 +165,7 @@ class ExtensionCore {
                     }
                     return false;
                 });
-                
+
                 if (isExcluded) {
                     let excludeReason = "unknown exclusion";
                     if (currentPath.includes('/web/login')) {
@@ -173,14 +173,14 @@ class ExtensionCore {
                     } else if (currentPath.includes('/jobs')) {
                         excludeReason = "jobs page exclusion";
                     }
-                    
+
                     return {
                         allowed: false,
                         reason: "URL matches excluded pattern",
                         pattern: excludeReason
                     };
                 }
-                
+
                 // Since we use <all_urls>, extension can run everywhere except excluded
                 return {
                     allowed: true,
@@ -188,40 +188,40 @@ class ExtensionCore {
                     pattern: "<all_urls>"
                 };
             },
-            
+
             // Method to check if current URL should have Odoo modules injected
-            shouldInjectOdooModules: function() {
+            shouldInjectOdooModules: function () {
                 const currentPath = window.location.pathname;
                 const hasFileInput = document.querySelector('input[type="file"]') !== null;
-                
+
                 // Check if current path is excluded
-                const isExcludedPath = this.odooModuleConditions.excludedWebPaths.some(excludedPath => 
+                const isExcludedPath = this.odooModuleConditions.excludedWebPaths.some(excludedPath =>
                     currentPath.includes(excludedPath)
                 );
-                
+
                 // Also check for jobs routes (like /jobs/apply/*)
                 const isJobsPath = currentPath.includes('/jobs');
-                
+
                 // Detect portal/frontend views by checking for common indicators
                 const isPortalView = this._detectPortalView();
-                
+
                 // Check if it's a backend web module (admin interface)
                 const isBackendWebModule = (
-                    currentPath.includes('/web') && 
-                    !isExcludedPath && 
+                    currentPath.includes('/web') &&
+                    !isExcludedPath &&
                     !isPortalView &&
                     this._isBackendContext()
                 );
-                
+
                 // Check if it's an Odoo specific path (usually backend)
                 const isOdooModule = (
-                    currentPath.includes('/odoo') && 
-                    !isExcludedPath && 
+                    currentPath.includes('/odoo') &&
+                    !isExcludedPath &&
                     !isPortalView
                 );
-                
+
                 const shouldInject = (isBackendWebModule || isOdooModule) && !isJobsPath;
-                
+
                 return {
                     shouldInject,
                     reasons: {
@@ -236,11 +236,11 @@ class ExtensionCore {
                     }
                 };
             },
-            
+
             // Helper method to detect if current page is a portal/frontend view
-            _detectPortalView: function() {
+            _detectPortalView: function () {
                 const currentPath = window.location.pathname;
-                
+
                 // Common portal/frontend paths
                 const portalPaths = [
                     '/shop',
@@ -255,29 +255,29 @@ class ExtensionCore {
                     '/website',
                     '/survey'
                 ];
-                
+
                 // Check if path matches portal patterns
                 const hasPortalPath = portalPaths.some(path => currentPath.includes(path));
-                
+
                 // Check for frontend-specific elements in DOM
                 const hasFrontendAssets = document.querySelector('link[href*="web.assets_frontend"]') !== null;
                 const hasWebsiteAssets = document.querySelector('link[href*="website.assets"]') !== null;
-                
+
                 // Check if we're NOT in the backend by looking for backend-specific elements
                 const hasBackendAssets = document.querySelector('link[href*="web.assets_backend"]') !== null;
                 const hasWebClient = document.querySelector('.o_web_client') !== null;
-                
+
                 return hasPortalPath || (hasFrontendAssets || hasWebsiteAssets) && !hasBackendAssets;
             },
-            
+
             // Helper method to detect backend context
-            _isBackendContext: function() {
+            _isBackendContext: function () {
                 // Look for backend-specific indicators
                 const hasBackendAssets = document.querySelector('link[href*="web.assets_backend"]') !== null;
                 const hasWebClient = document.querySelector('.o_web_client') !== null;
                 const hasActionManager = document.querySelector('.o_action_manager') !== null;
                 const hasControlPanel = document.querySelector('.o_control_panel') !== null;
-                
+
                 // Check URL patterns that typically indicate backend
                 const currentPath = window.location.pathname;
                 const backendPatterns = [
@@ -286,14 +286,33 @@ class ExtensionCore {
                     '/web/database',
                     '/web/webclient'
                 ];
-                
-                const hasBackendUrl = backendPatterns.some(pattern => 
+
+                const hasBackendUrl = backendPatterns.some(pattern =>
                     currentPath.includes(pattern) || window.location.href.includes(pattern)
                 );
-                
+
                 return hasBackendAssets || hasWebClient || hasActionManager || hasControlPanel || hasBackendUrl;
             }
         };
+    }
+
+    static getOdooVersion() {
+        const versionInfo = odoo.info && odoo.info.server_version_info;
+        const majorVersion = (versionInfo && versionInfo.length > 0) ? versionInfo[0] : 0; // Default a 0 si no se encuentra
+
+        const odooVersion = {
+            major: majorVersion,
+            isV16: majorVersion === 16,
+            isV17: majorVersion === 17,
+            isV18: majorVersion === 18,
+            isV17Plus: majorVersion >= 17, // Útil para lógica >= 17
+            isV18Plus: majorVersion >= 18, // Útil para lógica >= 18
+        };
+
+        // Congelar el objeto para evitar modificaciones accidentales
+        Object.freeze(odooVersion);
+
+        return odooVersion;
     }
 }
 

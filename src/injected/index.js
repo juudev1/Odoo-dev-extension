@@ -29,16 +29,20 @@ async function initializeOdooDev() {
         // console.log("[Odoo Dev Index] Performing early context validation...");
         const earlyUrlCheck = ExtensionCore.getAllowedUrls();
         const earlyInjectionCheck = earlyUrlCheck.shouldInjectOdooModules();
-        
+
         if (!earlyInjectionCheck.shouldInject) {
             console.log("[Odoo Dev Index] Early validation failed - skipping initialization");
             console.log("[Odoo Dev Index] Early rejection reasons:", earlyInjectionCheck.reasons);
             return; // Exit early without initializing anything
         }
-        
+
         // 1. Initialize ExtensionCore to get basic data (URL, etc.)
         // console.log("[Odoo Dev Index] Initializing ExtensionCore...");
         await ExtensionCore.init();
+
+        const odooVersion = ExtensionCore.getOdooVersion();
+        console.log("[Odoo Dev Index] Detected Odoo version:", odooVersion);
+        
         window.ExtensionCore = ExtensionCore; // Make it globally available
         // console.log("[Odoo Dev Index] ExtensionCore initialized. Extension Enabled:", ExtensionCore.isEnabled);
 
@@ -81,7 +85,7 @@ async function initializeOdooDev() {
         // Check if we should inject modules
         const urlCheck = ExtensionCore.getAllowedUrls();
         const injectionCheck = urlCheck.shouldInjectOdooModules();
-        
+
         // console.log("[Odoo Dev Index] URL analysis:", {
         //     currentUrl: window.location.href,
         //     isAllowed: urlCheck.isCurrentUrlAllowed(),
@@ -91,7 +95,7 @@ async function initializeOdooDev() {
         if (injectionCheck.shouldInject) {
             // console.log("[Odoo Dev Index] Conditions met, injecting Odoo modules...");
             // console.log("[Odoo Dev Index] Injection reasons:", injectionCheck.reasons);
-            
+
             // Additional safety check: ensure we're in a valid Odoo backend context
             if (injectionCheck.reasons.isPortalView) {
                 console.warn("[Odoo Dev Index] Portal view detected - aborting injection to prevent template errors");
@@ -145,7 +149,11 @@ async function initializeOdooDev() {
 
                 "./views/form/form_compiler.js",
                 "./views/list/list_renderer.js",
-                "./views/list/sale_order_line.js",
+
+                // Si es v18, cargar los parches específicos
+                ...(odooVersion.isV18 ? [
+                    "./views/list/sale_order_line.js",
+                ] : []),
                 "./views/list/stock_move.js",
                 "./views/view_button/view_button.js",
                 "./views/field.js",
