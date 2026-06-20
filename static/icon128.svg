@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <!-- Transparent background (implicitly by not drawing a rect) -->
+    
+    <!-- Main circle (96x96 with 16px padding on all sides) -->
+    <!-- Center is 64,64. Radius 48. -->
+    <circle cx="64" cy="64" r="48" fill="#714B67" />
+    
+    <!-- A subtle white glow (inner stroke) to look good on dark backgrounds as requested by Chrome docs -->
+    <circle cx="64" cy="64" r="47" stroke="rgba(255,255,255,0.15)" stroke-width="2" fill="none" />
+    
+    <!-- 'O' symbol -->
+    <circle cx="46" cy="64" r="14" stroke="#ffffff" stroke-width="6" fill="none" />
+    
+    <!-- '<' symbol -->
+    <polyline points="72,53 62,64 72,75" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <!-- '/' symbol -->
+    <line x1="78" y1="80" x2="84" y2="48" stroke="#ffffff" stroke-width="5" stroke-linecap="round" />
+    
+    <!-- '>' symbol -->
+    <polyline points="90,53 100,64 90,75" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
