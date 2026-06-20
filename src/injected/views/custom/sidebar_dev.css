@@ -22,6 +22,12 @@
   gap: 10px;
 }
 
+.dev-sidebar h4 {
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+  color: #333;
+}
+
 .dev-sidebar-output {
   overflow-y: auto;
   /* Scroll si el contenido es largo */
@@ -192,7 +198,7 @@
   margin-right: 10px; /* Espacio antes de las acciones */
 }
 
-.field-label-container strong {
+.dev-sidebar .field-label-container strong {
   color: #333;
   font-weight: 600; /* Hacerla más prominente */
   white-space: nowrap; /* Evitar que la etiqueta se rompa */
@@ -201,14 +207,14 @@
 }
 
 
-.field-top-line {
+.dev-sidebar .field-top-line {
   display: flex;
   justify-content: space-between; /* Empuja label y acciones a los extremos */
   align-items: center; /* Centrar verticalmente label y acciones */
   width: 100%;
 }
 
-.field-key-value {
+.dev-sidebar .field-key-value {
   display: flex; /* Para alinear icono/label y valor */
   align-items: center;
   flex-grow: 1; /* Permite que este contenedor crezca */
@@ -217,14 +223,14 @@
   margin-right: 5px; /* Pequeño espacio antes de los botones de acción */
 }
 
-.field-key-value strong {
+.dev-sidebar .field-key-value strong {
   color: #333;
   margin-right: 4px;
   white-space: nowrap; /* Evita que la etiqueta se parta en varias líneas */
   flex-shrink: 0; /* No permitir que la etiqueta se encoja */
 }
 
-.field-value {
+.dev-sidebar .field-value {
   display: block; /* Asegura que ocupe su propia línea */
   color: #555;
   font-size: 0.95em; /* Ligeramente más grande que antes quizás */
@@ -233,24 +239,24 @@
   line-height: 1.4; /* Mejorar legibilidad multilínea */
 }
 
-.field-value.empty-value {
+.dev-sidebar .field-value.empty-value {
   color: #999;
   font-style: italic;
 }
 
-.field-value-line {
+.dev-sidebar .field-value-line {
   width: 100%; /* Ocupa todo el ancho */
   padding-left: 5px; /* Pequeña indentación opcional */
 }
 
-.field-actions {
+.dev-sidebar .field-actions {
   display: flex;
   align-items: center;
   gap: 5px;
   flex-shrink: 0; /* No encoger las acciones */
 }
 
-.field-action-btn {
+.dev-sidebar .field-action-btn {
   color: #6c757d; /* Color grisáceo para iconos */
   padding: 0 4px !important; /* Ajuste padding bootstrap */
   line-height: 1;
@@ -262,20 +268,21 @@
   border: none;
   background-color: transparent;
 }
-.field-action-btn:hover {
+
+.dev-sidebar .field-action-btn:hover {
   color: var(--primary-color, #0d6efd); /* Usar variable si existe */
   opacity: 1;
   background-color: #f9f9f9;
 }
 
-.field-edit-mode {
+.dev-sidebar .field-edit-mode {
   width: 100%;
   display: flex;
   flex-direction: column; /* Ya era column */
   margin-top: 5px; /* Espacio si se entra en edición */
 }
 
-.field-edit-mode .form-label {
+.dev-sidebar .field-edit-mode .form-label {
   margin-bottom: 4px;
   font-size: 0.9em;
   display: flex; /* Alinear label e icono técnico */
@@ -283,12 +290,12 @@
   white-space: normal;
 }
 
-.edit-input {
+.dev-sidebar .edit-input {
   margin-bottom: 5px; /* Espacio debajo del input */
 }
 
 /* Específico para checkbox */
-.field-edit-mode input[type="checkbox"].edit-input {
+.dev-sidebar .field-edit-mode input[type="checkbox"].edit-input {
   width: auto; /* Tamaño natural */
   margin-left: 5px !important; /* Alineación */
   margin-top: 5px;
@@ -296,30 +303,30 @@
   display: block; /* Asegura espacio debajo */
 }
 
-.edit-actions {
+.dev-sidebar .edit-actions {
   margin-top: 5px;
   display: flex;
   gap: 5px;
 }
 
-.edit-actions .btn i {
+.dev-sidebar .edit-actions .btn i {
   margin-right: 4px;
 }
 
-.technical-field-name {
+.dev-sidebar .technical-field-name {
   font-weight: normal;
   font-size: 0.9em;
   color: #6c757d;
   margin-left: 4px;
 }
 
-.edit-input, .field-edit-mode select.edit-input {
+.dev-sidebar .edit-input, .field-edit-mode select.edit-input {
   margin-bottom: 5px;
   width: 100%;
   box-sizing: border-box;
 }
 
-.readonly-indicator-icon {
+.dev-sidebar .readonly-indicator-icon {
   color: #6c757d;
   font-size: 0.9em;
   cursor: help;
@@ -331,31 +338,33 @@
 
 /* Run model method */
 
-.run-model-method-section .form-label-sm {
+.dev-sidebar .run-model-method-section .form-label-sm {
   font-size: 0.85em;
   font-weight: 500;
   margin-bottom: 2px;
 }
 
 /* Estilo para inputs de código */
-.code-input {
+.dev-sidebar .code-input {
   font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
   font-size: 0.9em;
   border-radius: 4px;
   border: 1px solid #ced4da; /* Ajustar color según tu tema */
 }
-textarea.code-input {
+
+.dev-sidebar textarea.code-input {
   line-height: 1.4;
 }
 
 /* Sección de Vista Previa */
-.orm-call-preview {
+.dev-sidebar .orm-call-preview {
   background-color: #f0f0f0; /* Fondo ligero para destacar */
   border: 1px solid #e0e0e0;
   border-radius: 5px;
   margin-top: 15px;
 }
-.preview-header {
+
+.dev-sidebar .preview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -365,22 +374,25 @@ textarea.code-input {
   border-top-left-radius: 5px;
   border-top-right-radius: 5px;
 }
-.preview-header h6 {
+
+.dev-sidebar .preview-header h6 {
   margin: 0;
   font-size: 0.9em;
   font-weight: 600;
   color: #333;
 }
-.copy-preview-btn {
+
+.dev-sidebar .copy-preview-btn {
   padding: 2px 8px;
   font-size: 0.8em;
 }
-.copy-preview-btn i {
+
+.dev-sidebar .copy-preview-btn i {
   margin-right: 3px;
 }
 
 /* Bloque de código de la vista previa */
-.code-preview {
+.dev-sidebar .code-preview {
   padding: 10px 12px;
   margin: 0;
   font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
@@ -396,20 +408,22 @@ textarea.code-input {
 }
 
 /* Botón Run con estado de carga */
-.dev-sidebar-btn-run-method {
+.dev-sidebar .dev-sidebar-btn-run-method {
   /* Tus estilos existentes para el botón */
 }
 
 /* Sección de Salida */
-.model-method-output {
+.dev-sidebar .model-method-output {
   margin-top: 15px;
 }
-.model-method-output h6 {
+
+.dev-sidebar .model-method-output h6 {
    margin-bottom: 5px;
    font-size: 0.9em;
    font-weight: 600;
 }
-.model-method-output pre {
+
+.dev-sidebar .model-method-output pre {
   padding: 12px;
   margin: 0;
   border-radius: 5px;
@@ -421,6 +435,7 @@ textarea.code-input {
   overflow: auto;
   border: 1px solid transparent; /* Borde base */
 }
+
 .model-method-output pre code {
   font-family: inherit; /* Heredar fuente del <pre> */
 }
