@@ -16,7 +16,7 @@ odoo.define('odoo_dev.services.devinfo', ['@web/core/registry', "@web/core/toolt
                 }
             }
 
-            function openDevInfo(el, { devinfo = "", template, info }) {
+            function openDevInfo(el, { devinfo = "", template, info, position }) {
                 cleanup();
                 if (!devinfo && !template) {
                     return false;
@@ -25,7 +25,7 @@ odoo.define('odoo_dev.services.devinfo', ['@web/core/registry', "@web/core/toolt
                     el,
                     Tooltip,
                     { tooltip: devinfo, template, info },
-                    { position: "right" }
+                    { position: position || "bottom" }
                 );
 
                 return true;
@@ -58,7 +58,12 @@ odoo.define('odoo_dev.services.devinfo', ['@web/core/registry', "@web/core/toolt
                             position: dataset.devinfoPosition,
                         };
                         if (dataset.devinfoInfo) {
-                            params.info = JSON.parse(dataset.devinfoInfo);
+                            try {
+                                params.info = JSON.parse(dataset.devinfoInfo);
+                            } catch (e) {
+                                console.warn("[Odoo Dev] Error parsing devinfoInfo", dataset.devinfoInfo, e);
+                                params.info = dataset.devinfoInfo;
+                            }
                         }
                         if (dataset.devinfoDelay) {
                             params.delay = parseInt(dataset.devinfoDelay, 10);

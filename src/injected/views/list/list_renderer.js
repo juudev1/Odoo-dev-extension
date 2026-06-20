@@ -152,7 +152,7 @@ odoo.define('odoo_dev.ListRenderer', ['@web/views/list/list_renderer', '@web/cor
             }
         });
     } else if (odooVersion.isV18) {
-        // ListRenderer.template = "odoo_dev.ListRenderer18";
+        ListRenderer.template = "odoo_dev.ListRenderer18";
         ListRenderer.recordRowTemplate = "odoo_dev.ListRenderer.RecordRow18"; 
 
         patch(ListRenderer.prototype, {

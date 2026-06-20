@@ -32,7 +32,7 @@
                                 t-on-click="() => this.onClickSortColumn(column)"
                                 t-on-keydown="(ev) => this.onCellKeydown(ev)"
                                 t-att-data-devinfo-template="'odoo_dev.FieldTooltip'"
-                                t-att-data-devinfo-info="makeTooltip(column)"
+                                t-att-data-devinfo-info="JSON.stringify(makeTooltip(column))"
                                 data-tooltip-delay="1000"
                                 tabindex="-1">
                                 <t t-if="column.hasLabel and column.widget !== 'handle'">
@@ -139,7 +139,7 @@
                                 t-on-click="() => this.onClickSortColumn(column)"
                                 t-on-keydown="(ev) => this.onCellKeydown(ev)"
                                 t-att-data-devinfo-template="'odoo_dev.FieldTooltip'"
-                                t-att-data-devinfo-info="makeTooltip(column)"
+                                t-att-data-devinfo-info="JSON.stringify(makeTooltip(column))"
                                 data-devinfo-delay="1000"
                                 tabindex="-1">
                                 <t t-if="column.hasLabel and column.widget !== 'handle'">
@@ -265,6 +265,9 @@
                                 t-att-data-tooltip-template="isDebugMode ? 'web.FieldTooltip' : 'web.ListHeaderTooltip'"
                                 t-att-data-tooltip-info="makeTooltip(column)"
                                 data-tooltip-delay="1000"
+                                t-att-data-devinfo-template="'odoo_dev.FieldTooltip'"
+                                t-att-data-devinfo-info="JSON.stringify(makeTooltip(column))"
+                                data-devinfo-delay="1000"
                                 tabindex="-1">
                                 <t t-if="column.hasLabel and column.widget !== 'handle'">
                                     <t t-set="isNumeric" t-value="isNumericColumn(column)" />
