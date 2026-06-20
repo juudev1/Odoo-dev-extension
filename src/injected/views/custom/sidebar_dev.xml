@@ -1,19 +1,37 @@
 <templates>
     <t t-name="odoo_dev.SideBar"
         owl="1">
-        <div class="col-3 dev-sidebar"
+        <div id="odoo-dev-sidebar-wrapper" t-att-class="state.isDarkMode ? 'dev-dark-mode' : ''">
+        <div class="dev-sidebar dev-glass-panel"
             t-if="state.isVisible">
             <div class="dev-sidebar-header">
                 <h4>Odoo Dev Tools</h4>
-                <button id="close"
-                    t-on-click="closeSideBar">close</button>
+                <div class="d-flex gap-2">
+                    <button class="dev-glass-btn dev-glass-btn-sm" t-on-click="toggleOdooTheme" title="Toggle Odoo Dark/Light Mode">
+                        <i t-attf-class="fa {{ state.isDarkMode ? 'fa-sun-o' : 'fa-moon-o' }}"/>
+                    </button>
+                    <button id="close" t-on-click="closeSideBar" title="Close Sidebar">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
             </div>
+
+            <!-- External Links -->
+            <div class="d-flex justify-content-between gap-2 mt-2 mb-2">
+                <a href="https://github.com/juudev1/Odoo-dev-extension" target="_blank" class="dev-glass-btn dev-glass-btn-sm flex-fill text-center text-decoration-none" title="Contribute on GitHub">
+                    <i class="fa fa-github me-1"></i> GitHub
+                </a>
+                <a href="https://buymeacoffee.com/juuxn" target="_blank" class="dev-glass-btn dev-glass-btn-sm flex-fill text-center text-decoration-none" title="Buy me a coffee" style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.3);">
+                    <i class="fa fa-coffee me-1"></i> Support
+                </a>
+            </div>
+
             <!-- Navigation Controls Area -->
             <div class="dev-sidebar-nav-controls d-flex align-items-center">
                 <!-- Back to Main Form (highest level back) -->
                 <button
                     t-if="!state.isFormView and activeRecordService.getMainFormContext() and state.navigationStack.length === 0 and !state.showingX2ManyListFor"
-                    class="btn btn-sm btn-outline-secondary me-2"
+                    class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-outline me-2"
                     t-on-click="revertToMainFormContext"
                     title="Revert to Main Form Context (clears sidebar navigation)">
                     <i class="fa fa-reply-all" /> Form </button>
@@ -23,13 +41,13 @@
             <div class="mt-2 mb-2 dev-sidebar-info-section">
                 <!-- Contextual Back Button (from x2m list to parent fields) -->
                 <button t-if="state.showingX2ManyListFor"
-                    class="btn btn-sm btn-secondary mb-2 w-100" t-on-click="clearX2ManyView">
+                    class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-secondary mb-2 w-100" t-on-click="clearX2ManyView">
                     <i class="fa fa-arrow-left" /> Back to <t
                         t-esc="state.showingX2ManyListFor.parentModel" /> Fields </button>
 
                 <!-- Contextual Back Button (from sub-record to previous view in stack) -->
                 <button t-if="!state.showingX2ManyListFor and state.navigationStack.length > 0"
-                    class="btn btn-sm btn-info mb-2 w-100" t-on-click="navigateBack">
+                    class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-info mb-2 w-100" t-on-click="navigateBack">
                     <i class="fa fa-arrow-left" /> Back to Previous View </button>
 
                 <ul class="dev-sidebar-info-list m-0 p-0" style="list-style: none;">
@@ -46,20 +64,36 @@
                         <strong class="dev-info-label">ID: </strong>
                         <span class="dev-info-value" t-esc="state.currentRecordId" />
                     </li>
+                    <li t-if="state.currentViewId">
+                        <strong class="dev-info-label">View ID: </strong>
+                        <span class="dev-info-value" t-esc="state.currentViewId" />
+                    </li>
+                    <li t-if="state.currentViewType">
+                        <strong class="dev-info-label">View Type: </strong>
+                        <span class="dev-info-value" t-esc="state.currentViewType" />
+                    </li>
+                    <li t-if="state.currentViewXmlId">
+                        <strong class="dev-info-label">View XML: </strong>
+                        <span class="dev-info-value" t-esc="state.currentViewXmlId" />
+                    </li>
+                    <li t-if="state.currentContext" class="mt-2">
+                        <strong class="dev-info-label">Context: </strong>
+                        <pre class="dev-glass-input mt-1" style="font-size: 0.8em; max-height: 150px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; word-wrap: break-word; padding: 6px;"><t t-out="formattedContext" /></pre>
+                    </li>
                 </ul>
             </div>
 
             <!-- Main Action Buttons -->
             <div class="dev-sidebar-options btn-group w-100 mb-2" role="group">
-                <button class="btn btn-outline-primary dev-sidebar-option flex-fill"
+                <button class="dev-glass-btn dev-glass-btn-outline-primary dev-sidebar-option flex-fill"
                     t-on-click="getRecordValues"
                     t-att-class="{ 'active': state.recordFields.length > 0 &amp;&amp; !state.showRunModelMethod &amp;&amp; !state.showingX2ManyListFor }">
                     <i class="fa fa-list-alt me-1" /> Fields </button>
-                <button class="btn btn-outline-primary dev-sidebar-option flex-fill"
+                <button class="dev-glass-btn dev-glass-btn-outline-primary dev-sidebar-option flex-fill"
                     t-on-click="getReports"
                     t-att-class="{ 'active': state.reports.length > 0 &amp;&amp; !state.showRunModelMethod &amp;&amp; !state.showingX2ManyListFor }">
                     <i class="fa fa-file-pdf-o me-1" /> Reports </button>
-                <button class="btn btn-outline-primary dev-sidebar-option flex-fill"
+                <button class="dev-glass-btn dev-glass-btn-outline-primary dev-sidebar-option flex-fill"
                     t-on-click="runModelMethodOpt"
                     t-att-class="{ 'active': state.showRunModelMethod }">
                     <i class="fa fa-code me-1" /> Method </button>
@@ -119,7 +153,7 @@
                                     <div class="field-actions">
                                         <button
                                             t-if="['many2one', 'one2many', 'many2many'].includes(field.definition.type) &amp;&amp; !field.accessError"
-                                            class="btn btn-sm btn-link p-0 field-action-btn refresh-relation-btn"
+                                            class="dev-glass-btn-icon p-0 field-action-btn refresh-relation-btn"
                                             t-att-disabled="field.isLoading"
                                             t-on-click.prevent.stop="field.definition.type === 'many2one' ? () => loadMany2oneName(field.key) : () => loadX2ManyCount(field.key)"
                                             t-att-title="field.definition.type === 'many2one' ? 'Load/Refresh name' : 'Load/Refresh record count'">
@@ -127,7 +161,7 @@
                                             <i t-if="field.isLoading" class="fa fa-spinner fa-spin" />
                                         </button>
                                         <button
-                                            class="btn btn-sm btn-link p-0 field-action-btn edit-btn ms-1"
+                                            class="dev-glass-btn-icon p-0 field-action-btn edit-btn ms-1"
                                             t-att-disabled="field.accessError or field.definition.compute or field.definition.related or ['one2many', 'many2many', 'binary'].includes(field.definition.type)"
                                             t-att-title="field.accessError ? 'Cannot edit (Access Denied/Read Error)' : field.definition.compute ? 'Cannot edit (Computed)' : field.definition.related ? 'Cannot edit (Related)' : ['one2many', 'many2many'].includes(field.definition.type) ? 'View/Manage via x2m actions' : field.definition.type === 'binary' ? 'Binary fields not editable here' : field.definition.readonly ? 'Edit field (Readonly in Odoo)' : 'Edit field'"
                                             t-on-click="() => startEdit(field)">
@@ -141,7 +175,7 @@
                                 <div class="field-value-line mt-1">
                                     <t t-set="processedValue" t-value="this.getDisplayValue(field)" />
                                     <t t-if="field.isLoading &amp;&amp; !field.isLoaded">
-                                        <span class="text-muted">(Loading...)</span>
+                                        <span class="dev-glass-text-muted">(Loading...)</span>
                                     </t>
 
                                     <t
@@ -152,14 +186,14 @@
                                         <a t-if="processedValue.id &amp;&amp; processedValue.model"
                                             t-att-href="`/web#id=${processedValue.id}&amp;model=${processedValue.model}&amp;view_type=form`"
                                             target="_blank"
-                                            class="btn btn-sm btn-link p-0 open-m2o-link"
+                                            class="dev-glass-btn-icon p-0 open-m2o-link"
                                             t-att-title="`Open ${processedValue.model} (ID: ${processedValue.id}) in new tab`">
                                             <i class="fa fa-external-link-square" />
                                         </a>
                                         <!-- Optional: Refresh button if only ID was initially shown -->
                                         <button
                                             t-if="processedValue.name &amp;&amp; processedValue.name.startsWith('(ID:') &amp;&amp; !field.isLoading &amp;&amp; !field.accessError"
-                                            class="btn btn-sm btn-link p-0 ms-1"
+                                            class="dev-glass-btn-icon p-0 ms-1"
                                             t-on-click.prevent.stop="() => loadMany2oneName(field.key)"
                                             title="Load name">
                                             <i class="fa fa-refresh" />
@@ -168,7 +202,7 @@
                                     <t
                                         t-elif="typeof processedValue === 'object' &amp;&amp; processedValue.type === 'x2many'">
                                         <span class="me-2" t-esc="processedValue.countDisplay" />
-                                        <button class="btn btn-sm btn-outline-info py-0 px-1"
+                                        <button class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-outline-info py-0 px-1"
                                             t-on-click="() => this.showX2ManyRecords(processedValue.fieldKey, processedValue.fieldDefinition)"
                                             t-att-disabled="field.accessError || (processedValue.countDisplay === '(empty)' || (typeof field.value === 'string' &amp;&amp; field.value.startsWith('0')))">
                                             <i class="fa fa-list" /> View List </button>
@@ -180,7 +214,7 @@
                                             t-esc="processedValue" />
                                         <button
                                             t-if="field.value &amp;&amp; !Array.isArray(field.value) &amp;&amp; !field.isLoading &amp;&amp; !field.accessError"
-                                            class="btn btn-sm btn-link p-0 ms-1"
+                                            class="dev-glass-btn-icon p-0 ms-1"
                                             t-on-click.prevent.stop="() => loadMany2oneName(field.key)"
                                             title="Load name">
                                             <i class="fa fa-external-link-square" />
@@ -201,40 +235,40 @@
                             <!-- MODO EDICIÓN -->
                             <div t-if="state.editingFieldKey === field.key"
                                 class="field-edit-mode mt-1">
-                                <label t-att-for="'edit-' + field.key" class="form-label fw-bold"><t
+                                <label t-att-for="'edit-' + field.key" class="dev-glass-label fw-bold"><t
                                         t-esc="field.definition.string || field.key" /> (<t
                                         t-esc="field.key" />)</label>
                                 <t t-set="fieldType" t-value="field.definition.type" />
                                 <input t-if="['char', 'text', 'html'].includes(fieldType)"
-                                    type="text" class="form-control form-control-sm edit-input"
+                                    type="text" class="dev-glass-input dev-glass-input-sm edit-input"
                                     t-att-id="'edit-' + field.key" t-model="state.editingFieldValue"
                                     t-ref="editInputRef" />
                                 <input t-if="['integer', 'float', 'monetary'].includes(fieldType)"
-                                    type="number" class="form-control form-control-sm edit-input"
+                                    type="number" class="dev-glass-input dev-glass-input-sm edit-input"
                                     t-att-id="'edit-' + field.key"
                                     t-att-step="['float', 'monetary'].includes(fieldType) ? 'any' : '1'"
                                     t-model="state.editingFieldValue" t-ref="editInputRef" />
                                 <div t-if="fieldType === 'boolean'" class="m-0 p-0">
-                                    <input type="checkbox" class="form-check-input m-0 p-0 w-100"
+                                    <input type="checkbox" class="dev-glass-checkbox m-0 p-0 w-100"
                                         t-att-id="'edit-' + field.key"
                                         t-model="state.editingFieldValue" t-ref="editInputRef" />
                                 </div>
                                 <input t-if="fieldType === 'many2one'" type="number"
-                                    class="form-control form-control-sm edit-input"
+                                    class="dev-glass-input dev-glass-input-sm edit-input"
                                     placeholder="Enter ID (or empty to clear)"
                                     t-att-id="'edit-' + field.key" t-model="state.editingFieldValue"
                                     t-ref="editInputRef" />
                                 <input t-if="fieldType === 'date'" type="date"
-                                    class="form-control form-control-sm edit-input"
+                                    class="dev-glass-input dev-glass-input-sm edit-input"
                                     t-att-id="'edit-' + field.key" t-model="state.editingFieldValue"
                                     t-ref="editInputRef" />
                                 <input t-if="fieldType === 'datetime'" type="datetime-local"
-                                    class="form-control form-control-sm edit-input"
+                                    class="dev-glass-input dev-glass-input-sm edit-input"
                                     t-att-id="'edit-' + field.key" t-model="state.editingFieldValue"
                                     t-ref="editInputRef" />
                                 <select
                                     t-if="fieldType === 'selection' &amp;&amp; field.definition.selection"
-                                    class="form-select form-select-sm edit-input"
+                                    class="dev-glass-select dev-glass-select-sm edit-input"
                                     t-att-id="'edit-' + field.key" t-model="state.editingFieldValue"
                                     t-ref="editInputRef">
                                     <option t-if="!field.definition.required" value="">-- Select --</option>
@@ -244,13 +278,13 @@
                                     </t>
                                 </select>
                                 <div class="edit-actions mt-1">
-                                    <button class="btn btn-sm btn-primary me-1"
+                                    <button class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-primary me-1"
                                         t-on-click="saveEdit" t-att-disabled="state.isSavingEdit">
                                         <i t-if="!state.isSavingEdit" class="fa fa-check" />
                                         <i
                                             t-if="state.isSavingEdit" class="fa fa-spinner fa-spin" />
                                         Save </button>
-                                    <button class="btn btn-sm btn-secondary" t-on-click="cancelEdit"><i
+                                    <button class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-secondary" t-on-click="cancelEdit"><i
                                             class="fa fa-times" /> Cancel</button>
                                 </div>
                             </div>
@@ -260,43 +294,49 @@
             </div>
 
             <!-- Output Area for Reports -->
-            <div class="dev-sidebar-output"
+            <div class="dev-sidebar-output mt-2"
                 t-if="state.reports.length > 0 and !state.showingX2ManyListFor and !state.showRunModelMethod">
-                <h5 class="mt-2">Reports</h5>
-                <ul class="list-group">
+                <h5 class="mt-2 mb-3"><i class="fa fa-print me-2 text-info"></i>Available Reports</h5>
+                <div class="d-flex flex-column gap-2">
                     <t t-foreach="state.reports" t-as="report" t-key="report.id">
-                        <li class="list-group-item dev-sidebar-item">
-                            <a t-att-href="report.url" target="_blank"
-                                class="d-flex justify-content-between align-items-center">
-                                <span t-esc="report.name" />
-                                <i class="fa fa-external-link" />
+                        <div class="dev-sidebar-item p-2 rounded d-flex justify-content-between align-items-center" style="background: rgba(255,255,255,0.05); border: 1px solid var(--dev-glass-border);">
+                            <div class="d-flex align-items-center overflow-hidden">
+                                <div class="me-2 rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2);">
+                                    <i class="fa fa-file-pdf-o" style="color: #ef4444; font-size: 1.1em;"></i>
+                                </div>
+                                <div class="text-truncate" t-att-title="report.name">
+                                    <span class="fw-bold" style="font-size: 0.9em;" t-esc="report.name" />
+                                </div>
+                            </div>
+                            <a t-att-href="report.url" target="_blank" class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-primary ms-2" title="Print/Download" style="padding: 4px 8px;">
+                                <i class="fa fa-download" />
                             </a>
-                        </li>
+                        </div>
                     </t>
-                </ul>
+                </div>
             </div>
 
             <div class="dev-sidebar-output" t-if="state.showRunModelMethod">
                 <div class="form-group run-model-method-section mt-2">
                     <h5 class="mt-2">Run Model Method</h5>
                     <div class="mb-2">
-                        <label for="methodNameInput" class="form-label form-label-sm">Method Name:</label>
-                        <input class="form-control form-control-sm" type="text" id="methodNameInput"
+                        <label for="methodNameInput" class="dev-glass-label dev-glass-label-sm">Method Name:</label>
+                        <input class="dev-glass-input dev-glass-input-sm" type="text" id="methodNameInput"
                             t-ref="methodNameInput" t-model="state.modelMethodName"
                             t-on-input="updateModelMethodPreview" placeholder="e.g., action_confirm" />
                     </div>
                     <div class="mb-2">
-                        <label for="methodArgsInput" class="form-label form-label-sm">Positional
+                        <label for="methodArgsInput" class="dev-glass-label dev-glass-label-sm">Positional
                             Arguments (JSON Array):</label>
-                        <textarea class="form-control form-control-sm code-input" rows="2"
+                        <textarea class="dev-glass-input dev-glass-input-sm code-input" rows="2"
                             id="methodArgsInput" t-ref="methodArgsInput"
                             t-model="state.modelMethodArgs" t-on-input="updateModelMethodPreview"
                             placeholder='e.g., ["arg1", {"key": "val"}]'></textarea>
                     </div>
                     <div class="mb-2">
-                        <label for="methodKwargsInput" class="form-label form-label-sm">Keyword
+                        <label for="methodKwargsInput" class="dev-glass-label dev-glass-label-sm">Keyword
                             Arguments (JSON Object):</label>
-                        <textarea class="form-control form-control-sm code-input" rows="2"
+                        <textarea class="dev-glass-input dev-glass-input-sm code-input" rows="2"
                             id="methodKwargsInput" t-ref="methodKwargsInput"
                             t-model="state.modelMethodKwargs" t-on-input="updateModelMethodPreview"
                             placeholder='e.g., {"context": {"lang": "es_ES"}}'></textarea>
@@ -307,14 +347,14 @@
                             class="preview-header d-flex justify-content-between align-items-center">
                             <h6>ORM Call Preview</h6>
                             <button
-                                class="btn btn-sm btn-outline-secondary py-0 px-1 copy-preview-btn"
+                                class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-outline py-0 px-1 copy-preview-btn"
                                 title="Copy preview" t-on-click="copyModelMethodPreview"><i
                                     class="fa fa-copy" /> Copy</button>
                         </div>
                         <pre class="code-preview bg-light p-2 rounded small"><t t-esc="state.modelMethodPreview"/></pre>
                     </div>
 
-                    <button class="btn btn-primary w-100 dev-sidebar-btn-run-method"
+                    <button class="dev-glass-btn dev-glass-btn-primary w-100 dev-sidebar-btn-run-method"
                         t-on-click="runModelMethod" t-att-disabled="state.isModelMethodRunning">
                         <t t-if="!state.isModelMethodRunning"><i class="fa fa-play me-1" /> Run
                             Method</t>
@@ -324,7 +364,7 @@
                 </div>
                 <div class="model-method-output mt-2" t-if="state.modelMethodOutput !== null">
                     <h6>Output:</h6>
-                    <pre t-ref="outputPre" class="bg-light p-2 rounded small"
+                    <pre t-ref="outputPre" class="dev-glass-bg-light p-2 rounded small"
                         t-att-class="{ 'output-error text-danger': state.modelMethodOutputIsError, 'output-success': !state.modelMethodOutputIsError }"><code class="language-json"><t t-esc="state.modelMethodOutput"/></code></pre>
                 </div>
 
@@ -333,20 +373,20 @@
                         <h6>History <span class="badge bg-secondary rounded-pill"
                                 t-esc="state.runMethodHistory.length" /></h6>
                         <button t-if="state.runMethodHistory.length > 0"
-                            class="btn btn-sm btn-link text-danger p-0 clear-history-btn"
+                            class="dev-glass-btn-icon text-danger p-0 clear-history-btn"
                             title="Clear history" t-on-click="clearRunMethodHistory"><i
                                 class="fa fa-trash-o" /> Clear</button>
                     </div>
-                    <ul class="list-group history-list" t-ref="historyListRef"
+                    <ul class="dev-glass-list history-list" t-ref="historyListRef"
                         style="max-height: 150px; overflow-y: auto;">
                         <t t-if="state.runMethodHistory.length === 0">
-                            <li class="list-group-item text-muted history-empty small">No history
+                            <li class="dev-glass-list-item text-muted history-empty small">No history
                                 yet.</li>
                         </t>
                         <t t-foreach="state.runMethodHistory" t-as="histItem"
                             t-key="histItem.timestamp">
                             <li
-                                class="list-group-item list-group-item-action history-item p-1 small"
+                                class="dev-glass-list-item list-group-item-action history-item p-1 small"
                                 t-on-click="() => applyHistoryItem(histItem)"
                                 t-att-title="'Click to apply\nArgs: ' + histItem.args + '\nKwargs: ' + histItem.kwargs">
                                 <div class="history-item-line1"><span class="history-model">
@@ -372,19 +412,19 @@
                 <h5 class="mt-2">
                     <t
                         t-esc="state.showingX2ManyListFor.fieldDefinition.string || state.showingX2ManyListFor.fieldKey" />
-                    <span class="text-muted small ms-1">(<t
+                    <span class="dev-glass-text-muted small ms-1">(<t
                             t-esc="state.showingX2ManyListFor.fieldDefinition.relation" />)</span>
                 </h5>
                 <div t-if="state.isLoadingX2Many" class="text-center my-3">
                     <i class="fa fa-spinner fa-spin fa-2x" /> Loading records... </div>
                 <t t-else="">
-                    <ul class="list-group">
+                    <ul class="dev-glass-list">
                         <t t-if="state.x2manyRecords.length === 0">
-                            <li class="list-group-item text-muted">No records found.</li>
+                            <li class="dev-glass-list-item text-muted">No records found.</li>
                         </t>
                         <t t-foreach="state.x2manyRecords" t-as="rec" t-key="rec.id">
                             <li
-                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-1 px-2"
+                                class="dev-glass-list-item list-group-item-action d-flex justify-content-between align-items-center py-1 px-2"
                                 style="cursor: pointer;"
                                 t-on-click="() => this.navigateToRelatedRecord(state.showingX2ManyListFor.fieldDefinition.relation, rec.id, state.showingX2ManyListFor.fieldKey)">
                                 <span t-esc="rec.display_name || `ID: ${rec.id}`" />
@@ -395,10 +435,11 @@
                 </t>
             </div>
         </div>
-        <div class="floating-button"
+        <div class="floating-button dev-glass-floating"
             t-if="!state.isVisible || !isInModal"
             t-on-click="toggleSideBar">
             <i class="fa fa-bug" />
+        </div>
         </div>
     </t>
 </templates>

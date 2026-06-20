@@ -1,4 +1,5 @@
 odoo.define('odoo_dev.components.field_xpath', ['@odoo/owl', '@web/core/utils/hooks'], function (require) {
+    console.log("[Odoo Dev Extension] EXECUTING odoo_dev.components.field_xpath factory function!");
     const { Component, useState, useRef } = require('@odoo/owl');
     const { useService } = require("@web/core/utils/hooks");
 

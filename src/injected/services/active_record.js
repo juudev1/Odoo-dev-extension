@@ -1,4 +1,4 @@
-odoo.define('odoo_dev.active_record', ['@odoo/owl', '@web/core/registry'], async function (require) {
+odoo.define('odoo_dev.active_record', ['@odoo/owl', '@web/core/registry'], function (require) {
 
     const { reactive } = require("@odoo/owl");
     const { registry } = require("@web/core/registry");
@@ -12,28 +12,31 @@ odoo.define('odoo_dev.active_record', ['@odoo/owl', '@web/core/registry'], async
     const activeRecordService = {
         dependencies: [],
         start(env) {
+            // Parse initial hash manually to avoid missing dependency errors
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const initialModel = hashParams.get('model') || null;
+            const rawId = hashParams.get('id');
+            const initialId = rawId ? (rawId === 'new' ? false : parseInt(rawId, 10)) : null;
+            const initialIsFormView = hashParams.get('view_type') === 'form';
+
             const _state = reactive({
                 // Estado actual expuesto
-                currentResModel: null,
-                currentResId: null,
-                currentIsFormView: false,
+                resModel: initialModel,
+                resId: initialId,
+                isFormView: initialIsFormView,
+                viewType: initialIsFormView ? 'form' : null,
+                viewId: null, // ID de la ir.ui.view
+                context: null, // el contexto actual de la vista
 
                 // Estado del último formulario principal
-                mainFormResModel: null,
-                mainFormResId: null,
+                mainFormResModel: initialIsFormView ? initialModel : null,
+                mainFormResId: initialIsFormView ? initialId : null,
             });
 
-            // Exponer el estado reactivo a través de un getter
-            // para que los componentes que lo usan (useService)
-            // obtengan el objeto reactivo correcto.
+            // Exponer el estado reactivo directamente para que Owl pueda rastrearlo
             const serviceInterface = {
-                get state() {
-                    return {
-                        resModel: _state.currentResModel,
-                        resId: _state.currentResId,
-                        isFormView: _state.currentIsFormView,
-                    };
-                },
+                state: _state,
+
 
                 // Método para obtener el contexto del formulario principal
                 getMainFormContext() {
@@ -47,11 +50,20 @@ odoo.define('odoo_dev.active_record', ['@odoo/owl', '@web/core/registry'], async
                     return null;
                 },
 
-                setActiveRecord(resModel, resId, isFormView = false) {
+                setActiveRecord(resModel, resId, isFormView = false, viewType = undefined, viewId = undefined, context = undefined) {
                     // console.log("[activeRecordService] setActiveRecord CALLED. New state:", resModel, resId, "IsForm:", isFormView);
-                    _state.currentResModel = resModel;
-                    _state.currentResId = resId;
-                    _state.currentIsFormView = isFormView;
+                    _state.resModel = resModel;
+                    _state.resId = resId;
+                    _state.isFormView = isFormView;
+                    if (viewType !== undefined) {
+                        _state.viewType = viewType || (isFormView ? 'form' : null);
+                    }
+                    if (viewId !== undefined) {
+                        _state.viewId = viewId;
+                    }
+                    if (context !== undefined) {
+                        _state.context = context;
+                    }
 
                     if (isFormView && resModel && resId !== null) {
                         // console.log("[activeRecordService] Storing as MainFormContext:", resModel, resId);
@@ -60,15 +72,18 @@ odoo.define('odoo_dev.active_record', ['@odoo/owl', '@web/core/registry'], async
                     }
                     // Considera si quieres emitir un evento aquí o si SideBarDev solo usa useEffect con state
                     if (env.bus) { // Asumiendo que env.bus está disponible
-                        env.bus.trigger("ACTIVE_RECORD_CHANGED", { resModel, resId, isFormView });
+                        env.bus.trigger("ACTIVE_RECORD_CHANGED", { resModel, resId, isFormView, viewType: _state.viewType, viewId: _state.viewId, context: _state.context });
                     }
                 },
 
                 clearActiveRecord() {
                     console.log("[activeRecordService] clearActiveRecord CALLED.");
-                    _state.currentResModel = null;
-                    _state.currentResId = null;
-                    _state.currentIsFormView = false;
+                    _state.resModel = null;
+                    _state.resId = null;
+                    _state.isFormView = false;
+                    _state.viewType = null;
+                    _state.viewId = null;
+                    _state.context = null;
                     // NO limpiar mainFormResModel/Id aquí, ya que queremos recordarlo.
                     // Se limpiará cuando se cierre el formulario principal (ver parche de FormController).
 
@@ -85,12 +100,66 @@ odoo.define('odoo_dev.active_record', ['@odoo/owl', '@web/core/registry'], async
                         _state.mainFormResModel = null;
                         _state.mainFormResId = null;
                         // Si el registro activo actual era este formulario principal, también lo limpiamos
-                        if (_state.currentResModel === formModel && _state.currentResId === formId) {
+                        if (_state.resModel === formModel && _state.resId === formId) {
                             this.clearActiveRecord();
                         }
                     }
                 }
             };
+
+            // Listen to native Odoo UI updates. This eliminates the need for FormController patches!
+            if (env.bus) {
+                env.bus.addEventListener("ACTION_MANAGER:UI-UPDATED", () => {
+                    const actionService = env.services?.action;
+                    if (actionService && actionService.currentController) {
+                        const ctrl = actionService.currentController;
+                        if (ctrl.action && ctrl.action.res_model) {
+                            const model = ctrl.action.res_model;
+                            const viewType = ctrl.viewType || ctrl.view?.type || (ctrl.action.views?.some(v => v[1] === 'form') ? 'form' : 'list');
+                            const isForm = viewType === 'form';
+                            const activeView = ctrl.action?.views?.find(v => v[1] === viewType);
+                            const fallbackViewId = activeView && activeView[0] !== false ? activeView[0] : null;
+                            const configViewId = (ctrl.env?.config?.views || []).find(v => v[1] === viewType)?.[0] || null;
+                            const viewId = ctrl.props?.info?.id || ctrl.props?.archInfo?.viewId || ctrl.view?.id || ctrl.props?.viewId || configViewId || fallbackViewId;
+                            
+                            let id = ctrl.props?.resId || ctrl.action?.res_id || null;
+                            if (id === false || id === 'new') id = null;
+                            
+                            const context = ctrl.props?.context || ctrl.action?.context || null;
+
+                            console.log("[activeRecordService] Native UI Update caught:", model, id, isForm, viewType, viewId, "context:", context);
+                            serviceInterface.setActiveRecord(model, id, isForm, viewType, viewId, context);
+                        } else {
+                            // Si cambiamos a una acción sin modelo (ej. Dashboard), limpiamos.
+                            serviceInterface.clearActiveRecord();
+                        }
+                    }
+                });
+            }
+
+            // Also check immediately upon start in case we mounted after the initial UI update
+            const actionService = env.services?.action;
+            if (actionService && actionService.currentController) {
+                const ctrl = actionService.currentController;
+                if (ctrl.action && ctrl.action.res_model) {
+                    const model = ctrl.action.res_model;
+                    const viewType = ctrl.viewType || ctrl.view?.type || (ctrl.action.views?.some(v => v[1] === 'form') ? 'form' : 'list');
+                    const isForm = viewType === 'form';
+                    const activeView = ctrl.action?.views?.find(v => v[1] === viewType);
+                    const fallbackViewId = activeView && activeView[0] !== false ? activeView[0] : null;
+                    const configViewId = (ctrl.env?.config?.views || []).find(v => v[1] === viewType)?.[0] || null;
+                    const viewId = ctrl.props?.info?.id || ctrl.props?.archInfo?.viewId || ctrl.view?.id || ctrl.props?.viewId || configViewId || fallbackViewId;
+                    
+                    let id = ctrl.props?.resId || ctrl.action?.res_id || null;
+                    if (id === false || id === 'new') id = null;
+                    
+                    const context = ctrl.props?.context || ctrl.action?.context || null;
+
+                    console.log("[activeRecordService] Initial Mount Native UI Update:", model, id, isForm, viewType, viewId, "context:", context);
+                    serviceInterface.setActiveRecord(model, id, isForm, viewType, viewId, context);
+                }
+            }
+
             return serviceInterface;
         },
     };

@@ -105,7 +105,7 @@
 
     <t t-name="odoo_dev.FieldXpath" owl="1">
         <!-- Cambiar el botón/icono y la acción -->
-        <button class="btn btn-sm btn-link p-0 field-action-btn xpath-btn"
+        <button class="dev-glass-btn-icon p-0 field-action-btn xpath-btn"
                 t-att-disabled="state.isLoading"
                 t-on-click.prevent.stop="findAndShowViews"
                 aria-label="Find field in views and show inheritance options"
@@ -126,21 +126,21 @@
         <div class="xpath-popover-content">
             <div class="popover-header">
                  <h6 class="popover-title">Field "<t t-esc="props.fieldName"/>" found in:</h6>
-                 <button class="btn-close btn-sm" aria-label="Close" t-on-click="close"/>
+                 <button class="dev-glass-btn-icon btn-sm" aria-label="Close" t-on-click="close"><i class="fa fa-times"/></button>
             </div>
-            <ul class="list-group list-group-flush view-list">
+            <ul class="dev-glass-list view-list">
                 <t t-if="props.views.length === 0">
-                     <li class="list-group-item text-muted">(Not found)</li>
+                     <li class="dev-glass-list-item dev-glass-text-muted">(Not found)</li>
                 </t>
                 <t t-foreach="props.views" t-as="view" t-key="view.viewXmlId">
-                    <li class="list-group-item view-list-item">
+                    <li class="dev-glass-list-item view-list-item">
                         <div class="view-info">
                             <span class="view-name" t-att-title="view.viewXmlId">
-                                <t t-esc="view.viewName"/> <small class="text-muted"> (<t t-esc="view.viewXmlId"/>)</small>
+                                <t t-esc="view.viewName"/> <small class="dev-glass-text-muted"> (<t t-esc="view.viewXmlId"/>)</small>
                             </span>
                             <code class="view-xpath" t-att-title="view.xpath"><t t-esc="view.xpath"/></code>
                         </div>
-                        <button class="btn btn-sm btn-outline-primary copy-xml-btn"
+                        <button class="dev-glass-btn dev-glass-btn-sm dev-glass-btn-outline-primary copy-xml-btn"
                                 t-on-click="() => copyXml(view)"
                                 title="Copy inheritance XML snippet">
                             <i class="fa fa-copy me-1"/> Copy XML

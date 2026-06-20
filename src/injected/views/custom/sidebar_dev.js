@@ -1,5 +1,6 @@
-odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/hooks', 'odoo_dev.components.field_xpath', '@web/core/assets', '@web/core/registry'], function (require) {
-    const { Component, useState, useRef, useEffect, onWillUpdateProps, onWillUnmount, onMounted, onPatched, mount, whenReady } = require('@odoo/owl');
+odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/hooks', 'odoo_dev.components.field_xpath', '@web/core/assets', '@web/core/registry', '@web/session', '@web/core/user'], function (require) {
+    const { Component, useState, useRef, useEffect, onWillUpdateProps, onWillUnmount, onMounted, onPatched, mount, whenReady, markup } = require('@odoo/owl');
+    const { user } = require('@web/core/user');
     const { useService } = require("@web/core/utils/hooks");
     const { FieldXpath } = require('odoo_dev.components.field_xpath');
     const { templates } = require('@web/core/assets');
@@ -23,9 +24,13 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                 currentModel: this.activeRecordService.state.resModel,
                 currentRecordId: this.activeRecordService.state.resId,
                 isFormView: this.activeRecordService.state.isFormView,
+                currentViewType: this.activeRecordService.state.viewType,
+                currentViewId: this.activeRecordService.state.viewId,
+                currentViewXmlId: null,
                 recordFields: [],
                 fieldDefinitions: {},
-                isVisible: false,
+                isVisible: localStorage.getItem('odooDevSidebarVisible') === 'true',
+                isDarkMode: document.cookie.includes('color_scheme=dark') || (document.documentElement && document.documentElement.dataset.bsTheme === 'dark') || (document.documentElement && document.documentElement.dataset.colorScheme === 'dark') || (document.body && document.body.classList.contains('o_dark_mode')),
                 reports: [],
                 editingFieldKey: null,
                 editingFieldValue: null,
@@ -138,9 +143,36 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             ]);
 
             onMounted(() => {
+                console.log("[Odoo Dev SideBar] onMounted triggered. isVisible from localStorage:", this.state.isVisible, "Raw localStorage:", localStorage.getItem('odooDevSidebarVisible'));
+                if (this.state.isVisible) {
+                    document.body.classList.add('dev-sidebar-open');
+                    console.log("[Odoo Dev SideBar] Added dev-sidebar-open class to body");
+                }
+                
                 if (this.envBus) {
                     this.envBus.addEventListener("ACTIVE_RECORD_CHANGED", this._onActiveRecordChanged);
                 }
+                
+                // Sync state immediately in case we missed the event from FormController during mounting
+                if (this.activeRecordService.state.resModel && 
+                   (this.state.currentModel !== this.activeRecordService.state.resModel || 
+                    this.state.currentRecordId !== this.activeRecordService.state.resId)) {
+                    this._onActiveRecordChanged({
+                        detail: {
+                            resModel: this.activeRecordService.state.resModel,
+                            resId: this.activeRecordService.state.resId,
+                            isFormView: this.activeRecordService.state.isFormView,
+                            viewType: this.activeRecordService.state.viewType,
+                            viewId: this.activeRecordService.state.viewId,
+                            context: this.activeRecordService.state.context
+                        }
+                    });
+                }
+                
+                if (!this.state.currentViewXmlId && this.state.currentModel && this.state.currentViewType) {
+                    this.fetchViewXmlId(this.state.currentViewId, this.state.currentModel, this.state.currentViewType);
+                }
+
                 if (this.state.showRunModelMethod) {
                     this.loadRunMethodHistory();
                 }
@@ -162,12 +194,85 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             });
         }
 
-        _onActiveRecordChanged(payload) {
-            if (!this.state.isVisible) {
-                this.toggleSideBar(true); // Ensure sidebar is visible to handle the change
+        async fetchViewXmlId(viewId, model, viewType) {
+            console.log("[SideBarDev] fetchViewXmlId called for viewId:", viewId, "model:", model, "viewType:", viewType);
+            
+            let actualViewId = viewId;
+
+            // If viewId is null, but we have a model and viewType, ask the server for the default view ID
+            if (!actualViewId && model && viewType) {
+                try {
+                    const viewsData = await this.orm.call(model, "get_views", [], {
+                        views: [[false, viewType]],
+                        options: { action_id: false, toolbar: false, load_filters: false }
+                    });
+                    if (viewsData && viewsData.views && viewsData.views[viewType]) {
+                        actualViewId = viewsData.views[viewType].id;
+                        this.state.currentViewId = actualViewId; // Update the UI
+                        console.log("[SideBarDev] Resolved default view ID from server:", actualViewId);
+                    }
+                } catch (e) {
+                    console.warn("[SideBarDev] Could not fetch default view", e);
+                }
             }
+
+            if (!actualViewId) {
+                this.state.currentViewXmlId = null;
+                return;
+            }
+            try {
+                const res = await this.orm.read('ir.ui.view', [actualViewId], ['xml_id', 'name']);
+                console.log("[SideBarDev] fetchViewXmlId result:", res);
+                if (res && res.length > 0) {
+                    this.state.currentViewXmlId = res[0].xml_id || res[0].name || null;
+                } else {
+                    this.state.currentViewXmlId = null;
+                }
+            } catch (e) {
+                console.warn("[SideBarDev] Could not fetch view xml_id", e);
+                this.state.currentViewXmlId = null;
+            }
+        }
+
+        get formattedContext() {
+            if (!this.state.currentContext) return "{}";
+            try {
+                const jsonStr = JSON.stringify(this.state.currentContext, null, 2);
+                return markup(this.syntaxHighlightJSON(jsonStr));
+            } catch (e) {
+                return String(this.state.currentContext);
+            }
+        }
+
+        syntaxHighlightJSON(json) {
+            if (typeof json != 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        _onActiveRecordChanged(payload) {
+            // Sidebar should not automatically open when view changes.
+            // if (!this.state.isVisible) {
+            //     this.toggleSideBar(true); 
+            // }
             const eventData = payload.detail || payload;
-            const { resModel: serviceModel, resId: serviceResId, isFormView: serviceIsFormView } = eventData;
+            const { resModel: serviceModel, resId: serviceResId, isFormView: serviceIsFormView, viewType: serviceViewType, viewId: serviceViewId, context: serviceContext } = eventData;
 
             // console.log(`[SideBarDev _onActiveRecordChanged] Event: M=${serviceModel}, ID=${serviceResId}, Form=${serviceIsFormView}`);
             // console.log(`  Current Sidebar State (before): M=${this.state.currentModel}, ID=${this.state.currentRecordId}, NavStack=${this.state.navigationStack.length}, X2MView=${!!this.state.showingX2ManyListFor}`);
@@ -176,6 +281,7 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             const serviceIsDifferentFromCurrentDisplay =
                 serviceModel !== this.state.currentModel ||
                 serviceResId !== this.state.currentRecordId ||
+                serviceViewId !== this.state.currentViewId ||
                 (serviceIsFormView !== undefined && serviceIsFormView !== this.state.isFormView); // also consider formView change
 
             // console.log(`[SideBarDev _onActiveRecordChanged] Service is different from current display: ${serviceIsDifferentFromCurrentDisplay}`);
@@ -197,6 +303,17 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                     this.state.currentModel = serviceModel;
                     this.state.currentRecordId = serviceResId;
                     this.state.isFormView = serviceIsFormView;
+                    this.state.currentViewType = serviceViewType;
+                    this.state.currentContext = serviceContext;
+                    
+                    if (serviceViewId !== this.state.currentViewId) {
+                        this.state.currentViewId = serviceViewId;
+                        // Always call fetchViewXmlId because if viewId is null, it will resolve the default one
+                        this.fetchViewXmlId(serviceViewId, serviceModel, serviceViewType);
+                    } else if (!this.state.currentViewXmlId && serviceModel && serviceViewType) {
+                        // In case we reloaded the same view but it was missing
+                        this.fetchViewXmlId(serviceViewId, serviceModel, serviceViewType);
+                    }
 
 
                     if (serviceModel && serviceResId !== null) {
@@ -216,6 +333,16 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
                     this.state.currentModel = serviceModel;
                     this.state.currentRecordId = serviceResId;
                     this.state.isFormView = serviceIsFormView;
+                    this.state.currentViewType = serviceViewType;
+                    this.state.currentContext = serviceContext;
+                    
+                    if (serviceViewId !== this.state.currentViewId) {
+                        this.state.currentViewId = serviceViewId;
+                        // Always call fetchViewXmlId because if viewId is null, it will resolve the default one
+                        this.fetchViewXmlId(serviceViewId, serviceModel, serviceViewType);
+                    } else if (!this.state.currentViewXmlId && serviceModel && serviceViewType) {
+                        this.fetchViewXmlId(serviceViewId, serviceModel, serviceViewType);
+                    }
 
                     if (serviceModel && serviceResId !== null) {
                         // console.log("[SideBarDev _onActiveRecordChanged]   Root change, visible, no data. Calling getRecordValues().");
@@ -823,8 +950,33 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             }
         }
 
+        async toggleOdooTheme() {
+            const isDark = document.cookie.includes('color_scheme=dark');
+            const newScheme = isDark ? 'light' : 'dark';
+            
+            try {
+                await this.orm.write('res.users', [user.userId], {
+                    color_scheme: newScheme
+                });
+            } catch (e) {
+                console.warn("Could not save color scheme to user preferences", e);
+            }
+
+            document.cookie = `color_scheme=${newScheme};path=/;max-age=${365 * 24 * 60 * 60}`;
+            // Optional: Also toggle the class to give immediate feedback before reload
+            if (newScheme === 'dark') {
+                document.body.classList.add('o_dark_mode');
+                document.documentElement.dataset.bsTheme = 'dark';
+            } else {
+                document.body.classList.remove('o_dark_mode');
+                document.documentElement.dataset.bsTheme = 'light';
+            }
+            window.location.reload();
+        }
+
         closeSideBar() {
             this.state.isVisible = false;
+            localStorage.setItem('odooDevSidebarVisible', 'false');
             // Optionally preserve state or clear it:
             // this.clearOutput(false); // This would reset everything
         }
@@ -844,8 +996,14 @@ odoo.define('odoo_dev.components.sidebar_dev', ['@odoo/owl', '@web/core/utils/ho
             }
         }
 
-        toggleSideBar() {
-            this.state.isVisible = !this.state.isVisible;
+        toggleSideBar(forceState = null) {
+            // Owl passes the event as the first argument, so we need to ignore it if it's an object
+            const isForceStateEvent = forceState !== null && typeof forceState === 'object';
+            const newState = isForceStateEvent ? !this.state.isVisible : (forceState !== null ? forceState : !this.state.isVisible);
+            
+            this.state.isVisible = newState;
+            localStorage.setItem('odooDevSidebarVisible', this.state.isVisible ? 'true' : 'false');
+            
             if (this.state.isVisible) {
                 this.openSideBar();
             } else {

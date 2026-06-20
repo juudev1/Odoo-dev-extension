@@ -4,7 +4,7 @@ odoo.define('odoo_dev.list_controller', ['@odoo/owl', '@web/views/list/list_cont
     const { ListController } = require("@web/views/list/list_controller");
     const { useService } = require("@web/core/utils/hooks");
     const { patch } = require("@web/core/utils/patch");
-    const { useEffect, onWillUnmount } = require('@odoo/owl');
+    const { useEffect, onWillUnmount, onMounted, onPatched } = require('@odoo/owl');
     const odooVersion = require('odoo_dev.version_utils');
 
     if (odooVersion.isV17Plus) {
@@ -14,17 +14,24 @@ odoo.define('odoo_dev.list_controller', ['@odoo/owl', '@web/views/list/list_cont
                 super.setup();
                 this.activeRecordService = useService("activeRecordService");
 
-                useEffect(
-                    (props) => {
-                        const { resModel, resId } = this.props;
-                        if (resModel) {
-                            this.activeRecordService.setActiveRecord(resModel, resId, true);
-                        } else {
-                            this.activeRecordService.clearActiveRecord();
-                        }
-                    },
-                    () => [this.props.resModel, this.props.resId]
-                );
+                const updateActiveRecord = () => {
+                    const resModel = this.props.resModel;
+                    const viewType = 'list';
+                    const configViewId = (this.env?.config?.views || []).find(v => v[1] === viewType)?.[0] || null;
+                    const viewId = this.props?.info?.id || this.props?.archInfo?.viewId || this.env?.config?.viewId || configViewId || this.props?.viewId || this.env?.services?.action?.currentController?.view?.id || null;
+                    const context = this.props?.context || null;
+                    
+                    console.log("[Odoo Dev ListController] updateActiveRecord triggered. resModel:", resModel, "viewId:", viewId, "env.config:", this.env?.config);
+
+                    if (resModel) {
+                        this.activeRecordService.setActiveRecord(resModel, null, false, viewType, viewId, context);
+                    } else {
+                        this.activeRecordService.clearActiveRecord();
+                    }
+                };
+
+                onMounted(updateActiveRecord);
+                onPatched(updateActiveRecord);
 
                 onWillUnmount(() => {
                     // Limpiar cuando el controlador del formulario se destruye
@@ -45,17 +52,22 @@ odoo.define('odoo_dev.list_controller', ['@odoo/owl', '@web/views/list/list_cont
                 this._super();
                 this.activeRecordService = useService("activeRecordService");
 
-                useEffect(
-                    (props) => {
-                        const { resModel, resId } = this.props;
-                        if (resModel && resId) {
-                            this.activeRecordService.setActiveRecord(resModel, resId, true);
-                        } else {
-                            this.activeRecordService.clearActiveRecord();
-                        }
-                    },
-                    () => [this.props.resModel, this.props.resId]
-                );
+                const updateActiveRecord = () => {
+                    const resModel = this.props.resModel || this.model?.root?.resModel;
+                    const viewType = 'list';
+                    const configViewId = (this.env?.config?.views || []).find(v => v[1] === viewType)?.[0] || null;
+                    const viewId = this.props?.info?.id || this.props?.archInfo?.viewId || this.env?.config?.viewId || configViewId || this.props?.viewId || this.env?.services?.action?.currentController?.view?.id || null;
+                    const context = this.props?.context || null;
+
+                    if (resModel) {
+                        this.activeRecordService.setActiveRecord(resModel, null, false, viewType, viewId, context);
+                    } else {
+                        this.activeRecordService.clearActiveRecord();
+                    }
+                };
+
+                onMounted(updateActiveRecord);
+                onPatched(updateActiveRecord);
 
                 onWillUnmount(() => {
                     // Limpiar cuando el controlador del formulario se destruye
