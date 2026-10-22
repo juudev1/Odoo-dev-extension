@@ -1,6 +1,6 @@
 # Política de Privacidad de Odoo Dev Extension
 
-**Última actualización:** 20 de junio de 2026
+**Última actualización:** 22 de octubre de 2026
 
 En **Odoo Dev Extension**, la privacidad de nuestros usuarios es una prioridad fundamental. Esta política explica cómo manejamos los datos cuando utilizas nuestra extensión de Chrome.
 
@@ -12,16 +12,22 @@ La finalidad de la extensión es servir como una herramienta de desarrollo local
 
 ## 2. Qué Información se Almacena Localmente
 
-La extensión únicamente hace uso de la API `chrome.storage.local` para guardar configuraciones básicas de la interfaz que mejoran tu experiencia de usuario. Estos datos nunca salen de tu dispositivo:
+La extensión usa `chrome.storage.local` para guardar, solo en tu navegador:
 
-- **Preferencias de visualización:** Estado del panel lateral (abierto o cerrado).
-- **Tema de la interfaz:** Preferencia de modo claro u oscuro.
+- **Ajustes:** si la extensión está activa (en general y por sitio), la tecla del inspector, el botón flotante, el tema del panel.
+- **Estado del panel:** si está abierto, su ancho, si está anclado y la pestaña activa.
+- **Historial de «Método»:** las últimas llamadas que ejecutaste (modelo, método y argumentos).
+- **Imagen de fondo:** la imagen que elijas para el menú de inicio, comprimida.
 
-Ninguno de estos datos se transfiere a nuestros servidores ni a servicios de terceros.
+Ninguno de estos datos sale de tu navegador.
 
-## 3. Uso de Permisos (Host Permissions)
+## 3. Comunicación con Servidores
 
-La extensión solicita permisos amplios de host (`<all_urls>`) con el único propósito de inyectar el panel de herramientas de desarrollo (Sidebar) en cualquier entorno en el que estés ejecutando Odoo (por ejemplo: `localhost`, dominios corporativos internos, o servidores de Odoo.sh). El código de la extensión **no** interactúa, lee ni modifica ninguna otra página web fuera del contexto del framework de Odoo.
+La extensión no envía datos a ningún servidor propio ni de terceros. Las únicas peticiones de red que hace son llamadas JSON-RPC al mismo servidor de Odoo de la pestaña (`/web/dataset/call_kw`), con tu sesión y tus permisos, igual que las que hace el propio cliente web de Odoo.
+
+## 3.1. Uso de Permisos
+
+La extensión declara sus scripts para todas las URL (`<all_urls>`) porque Odoo puede estar en cualquier dominio (`localhost`, odoo.sh, servidores propios). En las páginas que no son el backend de Odoo, los scripts terminan sin hacer nada. Desde el popup puedes desactivarla en un sitio concreto.
 
 ## 4. Cambios en la Política de Privacidad
 

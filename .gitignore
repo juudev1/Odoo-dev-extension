@@ -165,3 +165,6 @@ dist
 node_modules/**
 
 .codegpt
+
+# Built extension (npm run build)
+/build/
