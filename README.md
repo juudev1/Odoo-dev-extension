@@ -1,64 +1,69 @@
+# Odoo Dev Tools
 
-Se muestran detalles de campos tan solo con dar clic derecho, aún cuando no tienen etiquetas.
-![image](https://github.com/user-attachments/assets/5fdfb979-380a-4e5e-a489-ed12d3f42e74)
+Extensión de Chrome para desarrolladores de Odoo 15 a 19, Community y Enterprise, incluidas las versiones SaaS (`saas~17.x`, `saas~18.x`).
 
-Imagen de fondo intercambiable permanente para todas las bases. (es solo visual, no se afecta la base de datos)
-![image](https://github.com/user-attachments/assets/9f99c8c5-05db-4148-8e82-7b5b84bb7393)
+## Qué hace
 
-Se agrega botón flotante en los formularios para abrir herramientas desarrollo
-![image](https://github.com/user-attachments/assets/6520dc70-da92-4182-8722-1186265f10f7)
+- **Inspector.** Ctrl + clic derecho sobre un campo, una etiqueta, un botón, una celda o cabecera de lista, o una tarjeta kanban muestra:
+  - el nombre técnico, el tipo, la relación y el widget;
+  - el contexto y el dominio;
+  - `invisible`, `readonly` y `required` con su expresión y su valor actual;
+  - el valor del campo y la vista de la que viene.
 
-Get Record Values para obtener todos los campos y sus valores
-![image](https://github.com/user-attachments/assets/628c1b29-4c6e-471b-a987-da35b5dfcd46)
+  Funciona sin activar el modo debug. La tecla se puede cambiar a Alt o Shift.
+- **Panel lateral**, con cuatro pestañas:
+  - **Registro**: todos los campos del registro abierto con su valor. Permite filtrar, editar valores, seguir relaciones many2one y one2many dentro del panel y ver la definición de cada campo.
+  - **Vista**: la acción, la vista con su ID externo, el árbol de herencia, la arquitectura combinada, el contexto y el modelo.
+  - **Método**: ejecuta métodos públicos del modelo, sobre el registro abierto o sobre el modelo, y muestra el código equivalente en Python y JS. Guarda un historial.
+  - **Informes**: los informes del modelo, con vista previa HTML que se recarga en el panel y apertura en PDF.
+- **XPath.** Para cualquier campo o botón:
+  - calcula sobre la vista combinada un XPath que encuentra un único nodo;
+  - dice qué vista y qué módulo añadieron el nodo y cuáles lo modifican;
+  - genera el XML de herencia listo para pegar.
+- **Utilidades:**
+  - modo debug (normal, debug, assets);
+  - modo oscuro de Odoo Enterprise;
+  - fondo personalizado para el menú de inicio de Enterprise;
+  - activar o desactivar la extensión por sitio.
 
-Al dar clic en copiar, te dará los ID externo de las vistas dodne se encontró y un xpath apróximado para realizar la herencia
-Por ahora es algo asi lo que te copea al portapapeles.
-```json
-[
-  {
-    "view": "res.partner.form",
-    "xpath": "/form/sheet[3]/notebook[7]/page/field/kanban/field",
-    "xml_id": "base.view_partner_form"
-  }
-]
+## Instalación
+
+```bash
+npm install
+npm run build
 ```
-Si se encuentra en más vistas te dará una lista de varios elementos.
 
-Get Reports te permite ver en vivo los camibos que realizas en los PDF, para que no tengas que descargarlo cuando modificas las vistas QWEB
-![image](https://github.com/user-attachments/assets/e665a885-b7b9-42cc-ac0e-a32d8e3bb34f)
+En Chrome, abre `chrome://extensions`, activa el modo desarrollador y pulsa **Cargar descomprimida**. Selecciona la carpeta `build/chrome`.
 
-Run Model Method te permite ejecutar métodos de python que no sean privados, es decir, que no inicien con _
-![image](https://github.com/user-attachments/assets/7cca7980-3060-471b-a46f-50dfb85f66dc)
+Mientras desarrollas, `npm run watch` recompila en cada cambio. Después pulsa recargar en la tarjeta de la extensión.
 
-Próximamente más novedades y soporte a V15 y V16
+## Compatibilidad
 
-**Extension Flow Explanation**
+| | 15 | 16 | 17 | 18 / saas~18 | 19 |
+|---|---|---|---|---|---|
+| Inspector en form, lista y kanban | sí (vistas legacy) | sí | sí | sí | sí |
+| Panel: registro, vista, método, informes | sí | sí | sí | sí | sí |
+| XPath y XML de herencia | sí | sí | sí | sí | sí |
+| Modo oscuro de Odoo | no existe | Enterprise | Enterprise | Enterprise | Enterprise |
+| Fondo del menú de inicio | Enterprise | Enterprise | Enterprise | Enterprise | Enterprise |
 
-1.  **Initialization:**
-    *   When you navigate to an Odoo page matching `http(s)://*/web*` (excluding login), the `manifest.json` injects two main scripts:
-        *   `dist/contentScript.bundle.js` (from `src/extension/contentScriptIsolated.js`) into an **ISOLATED** world.
-        *   `dist/loader.bundle.js` (from `src/injected/index.js` and its dependencies like `ExtensionCore`) into the **MAIN** world (the page's own JavaScript context).
-2.  **Data Bridge (Isolated -> Main):**
-    *   The **ISOLATED** script (`contentScriptIsolated.js`) immediately reads the background image from `chrome.storage.local`.
-    *   It then gathers the extension ID, URL, version, and the background image data.
-    *   It uses `window.postMessage` to send this data package (type `EXTENSION_INIT`) to the MAIN world.
-3.  **Main World Setup (`loader.bundle.js` / `ExtensionCore`):**
-    *   The `ExtensionCore` class in the MAIN world has an `init()` method.
-    *   This `init()` method sets up a listener for the `EXTENSION_INIT` message from the isolated script. It also sends a `REQUEST_EXTENSION_INIT` message as a fallback (though the isolated script sends proactively).
-    *   Once the `EXTENSION_INIT` message is received, `ExtensionCore.init()` resolves, storing the extension's data (URL, ID, background image etc.).
-4.  **Dynamic Module Loading (`loader.bundle.js` / `src/injected/index.js` logic):**
-    *   After `ExtensionCore` is initialized, the logic originally in `src/injected/index.js` (now part of `loader.bundle.js`) dynamically creates `<script type="module">` tags to load all the other necessary injected modules (`core/client.js`, `tooltip/*`, `views/*`, etc.) from the `src/injected/` directory using the extension URL provided by `ExtensionCore`. These files *must* be declared in `manifest.json`'s `web_accessible_resources`.
-5.  **Odoo Integration (`src/injected/core/client.js` and others):**
-    *   `core/client.js` acts as the main entry point *within* the Odoo environment (`odoo.define`).
-    *   It uses `ExtensionCore` to get resource paths (templates, CSS).
-    *   It applies the background image using a dynamic `<style>` tag.
-    *   It calls `xmlBundle.loadTemplatesAndCSS` to load custom XML templates and CSS into Odoo's asset management system, handling different Odoo versions (16, 17, 18+).
-    *   Other loaded modules (`views/*`, `tooltip/*`, `form_label.js`) use `odoo.define` and Odoo's patching mechanism (`@web/core/utils/patch`) to:
-        *   Modify existing Odoo components (Fields, List Renderer, Form Controller, Buttons, Labels, Form Compiler) to add tooltips or integrate custom features.
-        *   Define new components (SidebarDev, FieldXpath) and services (devinfo).
-        *   Register custom templates.
-6.  **User Interaction:**
-    *   **Right-Click:** Triggers the custom `devinfo` service (`src/injected/tooltip/js/dev_info_service.js`) to show technical details via tooltips defined in templates like `odoo_dev.FieldTooltip` and `odoo_dev.ViewButtonTooltip`.
-    *   **Floating Button:** Added by the patched `FormController` (`src/injected/views/form/form_controller.js` + `form_view.xml`), it toggles the `SideBarDev` component.
-    *   **Sidebar:** (`src/injected/views/custom/sidebar_dev.js` + `.xml` + `.css`) Allows fetching record values, finding reports, running model methods via ORM calls, and copying XPath expressions (using `FieldXpath` component).
-    *   **Popup (`static/index.html`):** Allows the user to select an image file. On "Save", `static/script.js` reads the file as Base64 and saves it to `chrome.storage.local` under the key `odoo_bg`. It also displays a preview.
+Requiere Chrome 111 o superior.
+
+## Cómo está hecha
+
+La extensión **no modifica Odoo**: no parchea componentes, no reemplaza plantillas y no registra módulos en el cargador de Odoo. Solo lee lo que el cliente web ya tiene en memoria. Si una versión futura de Odoo cambia algo interno, falla la función afectada de la extensión y Odoo sigue funcionando igual.
+
+Se compone de tres partes:
+
+- `src/page/`: script en el contexto de la página (`world: MAIN`). Lee el árbol de componentes OWL (`odoo.__WOWL_DEBUG__.root`), el `action` service y, en la 15, los widgets legacy. Hace las llamadas JSON-RPC a `/web/dataset/call_kw` con la sesión del usuario. No tiene interfaz.
+- `src/content/`: content script (contexto aislado). Contiene toda la interfaz (Preact) dentro de un Shadow DOM, así que el CSS de Odoo o de temas como spiffy/muk no le afecta ni ella a Odoo. Gestiona los ajustes y el historial en `chrome.storage`. Sus errores no llegan al diálogo de errores de Odoo.
+- `src/popup/`: ventana de ajustes de la extensión.
+
+Los dos scripts se comunican por `window.postMessage` (`src/shared/protocol.js`). Por ese canal solo pasan datos que la propia página ya tiene, nunca ajustes ni historial.
+
+Las diferencias entre versiones están aisladas:
+
+- `src/page/inspect.js` y `src/page/context.js`: OWL 2 (16+) frente a widgets legacy (15).
+- `src/content/api.js`: `get_views` frente a `fields_view_get`, y `list` frente a `tree`.
+
+El manifest se genera por navegador (`src/manifest.js`). Firefox 128+ está previsto (`npm run build:firefox`), pero todavía no está probado.
